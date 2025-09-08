@@ -16,8 +16,8 @@ const ChatApp: React.FC = () => {
     // For external access, use current hostname with RAG API port
     const currentHost = window.location.hostname
     return currentHost === 'localhost' || currentHost === '127.0.0.1' 
-      ? 'http://localhost:8001' 
-      : `${window.location.protocol}//${currentHost}:8001`
+      ? 'http://localhost:8001/api/v1' 
+      : `${window.location.protocol}//${currentHost}:8001/api/v1`
   }, [])
   
   const ETL_BASE = useMemo(() => {
