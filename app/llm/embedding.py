@@ -27,14 +27,13 @@ class EmbeddingManager:
         """임베딩 모델 로드"""
         if self.model is not None:
             return
-        
+        logger.info(f"Loading embedding model: {self.model_name} on {self.device}")
         try:
-            logger.info(f"Loading embedding model '{self.model_name}'...")
             self.model = SentenceTransformer(self.model_name, device=self.device)
             logger.info("Embedding model loaded successfully.")
         except Exception as e:
-            logger.error(f"Failed to load embedding model: {e}")
-            raise
+            logger.error(f"Failed to load embedding model {self.model_name}: {e}")
+            self.model = None
     
     def get_embedding(self, text: str) -> np.ndarray:
         """단일 텍스트에 대한 임베딩 생성"""
@@ -44,17 +43,7 @@ class EmbeddingManager:
         if self.model is None:
             raise RuntimeError("Embedding model is not available.")
             
-        try:
-            # show_progress_bar=False로 로그가 지저분해지는 것 방지
-            embedding = self.model.encode(
-                text, 
-                convert_to_numpy=True,
-                show_progress_bar=False
-            )
-            return embedding
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {e}")
-            raise
+        return self.model.encode(text, convert_to_numpy=True).astype(np.float32)
             
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
         """여러 텍스트에 대한 임베딩을 배치로 생성"""
@@ -64,17 +53,7 @@ class EmbeddingManager:
         if self.model is None:
             raise RuntimeError("Embedding model is not available.")
         
-        try:
-            embeddings = self.model.encode(
-                texts,
-                batch_size=self.batch_size,
-                convert_to_numpy=True,
-                show_progress_bar=False
-            )
-            return embeddings
-        except Exception as e:
-            logger.error(f"Failed to generate embeddings in batch: {e}")
-            raise
+        return self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
 
 # 전역 인스턴스 (싱글톤 패턴)
 _embedding_manager: Optional[EmbeddingManager] = None

@@ -229,12 +229,12 @@ class HybridSearchEngine:
 - [x] 한국어 텍스트 처리
 - [x] 검색 성능 최적화
 
-### **Phase 3: ETL & LLM** (예정)
-- [ ] 파일 파서 통합 (PDF/XLSX/DOCX)
-- [ ] ETL 파이프라인 구축
-- [ ] Ollama LLM 서비스 연동
-- [ ] RAG 파이프라인 완성
-- [ ] 답변 품질 향상
+### **Phase 3: ETL & LLM** ✅ **완료**
+- [x] 파일 파서 통합 (PDF/XLSX/DOCX)
+- [x] ETL 파이프라인 구축
+- [x] Ollama LLM 서비스 연동
+- [x] RAG 파이프라인 완성
+- [x] 답변 품질 향상
 
 ### **Phase 4: UI & 최적화** (예정)
 - [ ] React UI 포팅 및 통합

@@ -5,7 +5,7 @@ import os
 
 class Settings(BaseSettings):
     # 데이터베이스
-    database_url: str = "sqlite:///data/haanavilite.db"
+    database_url: str = "sqlite:///data/hananavilite.db"
     
     # FAISS 설정
     faiss_dimension: int = 1024
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     # LLM 설정
     ollama_base_url: str = "http://localhost:11434"
-    llm_model: str = "gemma3:12b"
+    llm_model: str = "gemma3:12b-it-qat"
     llm_max_tokens: int = 2048
     llm_temperature: float = 0.1
     

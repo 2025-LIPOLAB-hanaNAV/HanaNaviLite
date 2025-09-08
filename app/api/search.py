@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
 import logging
 
-from app.search.hybrid_engine import get_hybrid_search_engine, HybridSearchResult
+from app.search.hybrid_engine import get_hybrid_search_engine, HybridSearchResult, HybridSearchEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

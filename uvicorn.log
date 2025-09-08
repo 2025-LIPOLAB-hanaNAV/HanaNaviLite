@@ -1,0 +1,14 @@
+INFO:     Started server process [97414]
+INFO:     Waiting for application startup.
+2025-09-09 03:10:26,703 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 03:10:26,782 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 03:10:26,782 - app.llm.embedding - INFO - Embedding model loading is temporarily disabled for testing.
+2025-09-09 03:10:26,782 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 03:10:26,782 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 0, 'chunks_count': 0, 'cache_count': 0, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 03:10:26,782 - app.main - INFO - Application started on 0.0.0.0:8001
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8001): address already in use
+INFO:     Waiting for application shutdown.
+2025-09-09 03:10:26,783 - app.main - INFO - Shutting down HanaNaviLite application...
+2025-09-09 03:10:26,783 - app.main - INFO - FAISS engine cleaned up.
+INFO:     Application shutdown complete.

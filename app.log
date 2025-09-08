@@ -1,4 +1,117 @@
-2025-09-09 01:27:11,076 - app.main - INFO - Starting HanaNaviLite application...
-2025-09-09 01:27:11,077 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/haanavilite.db', 'documents_count': 0, 'chunks_count': 0, 'cache_count': 0, 'database_size_mb': 0.11, 'wal_mode': True}
-2025-09-09 01:27:11,077 - app.main - INFO - Application started on 0.0.0.0:8001
-2025-09-09 01:27:11,079 - app.main - INFO - Shutting down HanaNaviLite application...
+2025-09-09 03:10:26,703 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 03:10:26,782 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 03:10:26,782 - app.llm.embedding - INFO - Embedding model loading is temporarily disabled for testing.
+2025-09-09 03:10:26,782 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 03:10:26,782 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 0, 'chunks_count': 0, 'cache_count': 0, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 03:10:26,782 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 03:10:26,783 - app.main - INFO - Shutting down HanaNaviLite application...
+2025-09-09 03:10:26,783 - app.main - INFO - FAISS engine cleaned up.
+2025-09-09 03:39:56,168 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 03:39:56,223 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 03:39:56,223 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 03:39:56,224 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 03:40:03,207 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 03:40:03,207 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 03:40:03,207 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 03:40:03,207 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 3, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 03:40:03,207 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 03:40:03,208 - app.main - INFO - Shutting down HanaNaviLite application...
+2025-09-09 03:40:03,208 - app.main - INFO - FAISS engine cleaned up.
+2025-09-09 03:42:06,826 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 03:42:06,880 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 03:42:06,880 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 03:42:06,881 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 03:42:11,343 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 03:42:11,344 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 03:42:11,344 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 03:42:11,344 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 4, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 03:42:11,344 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 03:42:11,439 - app.search.ir_engine - INFO - SQLite FTS5 IR Engine initialized
+2025-09-09 03:42:11,439 - app.search.faiss_engine - INFO - FAISS Engine initialized - Dimension: 1024, GPU: False
+2025-09-09 03:42:11,439 - app.search.rrf - INFO - RRF Algorithm initialized - k=60, vector_weight=0.6, ir_weight=0.4
+2025-09-09 03:42:11,440 - app.utils.text_processor - INFO - Korean Text Processor initialized
+2025-09-09 03:42:11,440 - app.search.hybrid_engine - INFO - Hybrid Search Engine initialized
+2025-09-09 03:42:11,440 - app.llm.ollama_client - INFO - OllamaClient initialized - Base URL: http://localhost:11434, Model: gemma3:12b
+2025-09-09 03:42:11,440 - app.llm.rag_pipeline - INFO - RAG Pipeline initialized
+2025-09-09 03:42:11,440 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:42:11,837 - app.search.faiss_engine - INFO - Loaded FAISS index with 1 vectors
+2025-09-09 03:42:11,837 - app.search.faiss_engine - INFO - Loaded 1 ID mappings
+2025-09-09 03:42:11,837 - app.search.faiss_engine - INFO - Vector search returned 1 results
+2025-09-09 03:42:11,841 - app.search.ir_engine - INFO - Returned cached IR search results for query: 한화생명 시스템 대해 알려줘
+2025-09-09 03:42:11,841 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 1 results
+2025-09-09 03:42:11,841 - app.search.rrf - INFO - RRF fusion returned 1 results from 1 vector + 0 IR results
+2025-09-09 03:42:11,841 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:42:11,841 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 03:42:11,866 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 404 Not Found"
+2025-09-09 03:42:11,866 - app.llm.ollama_client - ERROR - HTTP error occurred: 404 - {"error":"model 'gemma3:12b' not found"}
+2025-09-09 03:42:11,866 - app.llm.ollama_client - ERROR - Failed to generate non-streaming response: Client error '404 Not Found' for url 'http://localhost:11434/api/generate'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2025-09-09 03:42:11,866 - app.llm.rag_pipeline - ERROR - RAG pipeline failed for query '한화생명 시스템에 대해 알려줘': Client error '404 Not Found' for url 'http://localhost:11434/api/generate'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Traceback (most recent call last):
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/rag_pipeline.py", line 49, in query
+    llm_response = await self.llm_client.generate(prompt)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/ollama_client.py", line 55, in generate
+    response = await self._request("POST", "/api/generate", json=payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/ollama_client.py", line 33, in _request
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/jjkim/Projects/HanaNaviLite/venv/lib/python3.13/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '404 Not Found' for url 'http://localhost:11434/api/generate'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2025-09-09 03:42:11,867 - app.api.rag - ERROR - RAG query failed: Client error '404 Not Found' for url 'http://localhost:11434/api/generate'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Traceback (most recent call last):
+  File "/home/jjkim/Projects/HanaNaviLite/app/api/rag.py", line 22, in rag_query
+    result = await pipeline.query(query)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/rag_pipeline.py", line 49, in query
+    llm_response = await self.llm_client.generate(prompt)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/ollama_client.py", line 55, in generate
+    response = await self._request("POST", "/api/generate", json=payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjkim/Projects/HanaNaviLite/app/llm/ollama_client.py", line 33, in _request
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/jjkim/Projects/HanaNaviLite/venv/lib/python3.13/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '404 Not Found' for url 'http://localhost:11434/api/generate'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2025-09-09 03:45:24,365 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 03:45:24,425 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 03:45:24,425 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 03:45:24,425 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 03:45:28,571 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 03:45:28,571 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 03:45:28,571 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 03:45:28,571 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 4, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 03:45:28,571 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 03:45:44,619 - app.search.ir_engine - INFO - SQLite FTS5 IR Engine initialized
+2025-09-09 03:45:44,619 - app.search.faiss_engine - INFO - FAISS Engine initialized - Dimension: 1024, GPU: False
+2025-09-09 03:45:44,619 - app.search.rrf - INFO - RRF Algorithm initialized - k=60, vector_weight=0.6, ir_weight=0.4
+2025-09-09 03:45:44,619 - app.utils.text_processor - INFO - Korean Text Processor initialized
+2025-09-09 03:45:44,619 - app.search.hybrid_engine - INFO - Hybrid Search Engine initialized
+2025-09-09 03:45:44,619 - app.llm.ollama_client - INFO - OllamaClient initialized - Base URL: http://localhost:11434, Model: gemma3:12b-it-qat
+2025-09-09 03:45:44,619 - app.llm.rag_pipeline - INFO - RAG Pipeline initialized
+2025-09-09 03:45:44,619 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:45:45,316 - app.search.faiss_engine - INFO - Loaded FAISS index with 1 vectors
+2025-09-09 03:45:45,316 - app.search.faiss_engine - INFO - Loaded 1 ID mappings
+2025-09-09 03:45:45,316 - app.search.faiss_engine - INFO - Vector search returned 1 results
+2025-09-09 03:45:45,321 - app.search.ir_engine - INFO - Returned cached IR search results for query: 한화생명 시스템 대해 알려줘
+2025-09-09 03:45:45,321 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 1 results
+2025-09-09 03:45:45,322 - app.search.rrf - INFO - RRF fusion returned 1 results from 1 vector + 0 IR results
+2025-09-09 03:45:45,322 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:45:45,322 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 03:45:51,578 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 03:46:25,964 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:46:26,046 - app.search.faiss_engine - INFO - Vector search returned 1 results
+2025-09-09 03:46:26,051 - app.search.ir_engine - INFO - Returned cached IR search results for query: 한화생명 시스템 대해 알려줘
+2025-09-09 03:46:26,052 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 1 results
+2025-09-09 03:46:26,052 - app.search.rrf - INFO - RRF fusion returned 1 results from 1 vector + 0 IR results
+2025-09-09 03:46:26,052 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '한화생명 시스템에 대해 알려줘'
+2025-09-09 03:46:26,052 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 03:46:26,606 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"

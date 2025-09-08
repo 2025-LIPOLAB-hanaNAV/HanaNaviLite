@@ -170,7 +170,7 @@ settings = Settings()
    
    # 신규 (SQLite)  
    import sqlite3
-   conn = sqlite3.connect("data/haanavilite.db")
+   conn = sqlite3.connect("data/hananavilite.db")
    ```
 
 3. **의존성 제거**
@@ -235,7 +235,7 @@ line-profiler==4.1.1
 ### **.env.example**
 ```env
 # 데이터베이스
-DATABASE_URL=sqlite:///data/haanavilite.db
+DATABASE_URL=sqlite:///data/hananavilite.db
 
 # FAISS 설정
 FAISS_DIMENSION=1024
@@ -284,12 +284,12 @@ MAX_MEMORY_GB=25
 - [x] 검색 API 엔드포인트
 
 ### **Phase 3: ETL & LLM**
-- [ ] 파일 파서 통합
-- [ ] ETL 파이프라인 구축
-- [ ] 임베딩 서비스
-- [ ] Ollama 클라이언트
-- [ ] RAG 파이프라인
-- [ ] 답변 생성 API
+- [x] 파일 파서 통합
+- [x] ETL 파이프라인 구축
+- [x] 임베딩 서비스
+- [x] Ollama 클라이언트
+- [x] RAG 파이프라인
+- [x] 답변 생성 API
 
 ### **Phase 4: UI & 최적화**
 - [ ] React UI 포팅
@@ -445,7 +445,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
 version: '3.8'
 
 services:
-  haanavilite:
+  hananavilite:
     build: .
     ports:
       - "8001:8001"
@@ -454,7 +454,7 @@ services:
       - ./models:/app/models
       - ./uploads:/app/uploads
     environment:
-      - DATABASE_URL=sqlite:///app/data/haanavilite.db
+      - DATABASE_URL=sqlite:///app/data/hananavilite.db
       - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       - ollama

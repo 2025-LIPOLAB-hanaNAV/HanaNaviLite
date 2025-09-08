@@ -14,6 +14,8 @@ from app.core.config import settings
 from app.core.database import get_db_manager
 from app.api.health import router as health_router
 from app.api.search import router as search_router
+from app.api.etl import router as etl_router
+from app.api.rag import router as rag_router
 from app.search.faiss_engine import cleanup_faiss_engine
 from app.llm.embedding import get_embedding_manager
 
@@ -46,8 +48,14 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Database initialization failed")
     
     # 임베딩 모델 로드
-    embedding_manager = get_embedding_manager()
-    embedding_manager.load_model()
+    try:
+        embedding_manager = get_embedding_manager()
+        embedding_manager.load_model()
+        logger.info("Embedding model loaded successfully.")
+    except Exception as e:
+        logger.error(f"Failed to load embedding model during startup: {e}", exc_info=True)
+        # 모델 로딩 실패 시에도 서버는 시작될 수 있도록 처리 (선택적)
+        # raise RuntimeError("Failed to load essential models") from e
     
     logger.info(f"Database initialized: {health_status}")
     logger.info(f"Application started on {settings.api_host}:{settings.api_port}")
@@ -93,6 +101,8 @@ async def global_exception_handler(request, exc):
 # 라우터 등록
 app.include_router(health_router, prefix="/api/v1", tags=["Health"])
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
+app.include_router(etl_router, prefix="/api/v1", tags=["ETL"])
+app.include_router(rag_router, prefix="/api/v1", tags=["RAG"])
 
 
 # 루트 엔드포인트
@@ -152,6 +162,6 @@ if __name__ == "__main__":
         "app.main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=True if settings.log_level.upper() == "DEBUG" else False,
+        reload=False,
         log_level=settings.log_level.lower()
     )
