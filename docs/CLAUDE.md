@@ -118,7 +118,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     # 데이터베이스
-    database_url: str = "sqlite:///data/haanavilite.db"
+    database_url: str = "sqlite:///data/hananavilite.db"
     
     # FAISS 설정
     faiss_dimension: int = 1024
