@@ -222,12 +222,12 @@ class HybridSearchEngine:
 - [x] 헬스체크 및 모니터링 API
 - [x] 메모리 최적화 아키텍처
 
-### **Phase 2: 검색 엔진** (다음 단계)
-- [ ] FAISS 벡터 검색 엔진
-- [ ] SQLite FTS5 IR 검색 
-- [ ] 하이브리드 검색 융합 (RRF)
-- [ ] 한국어 텍스트 처리
-- [ ] 검색 성능 최적화
+### **Phase 2: 검색 엔진** ✅ **완료**
+- [x] FAISS 벡터 검색 엔진
+- [x] SQLite FTS5 IR 검색 
+- [x] 하이브리드 검색 융합 (RRF)
+- [x] 한국어 텍스트 처리
+- [x] 검색 성능 최적화
 
 ### **Phase 3: ETL & LLM** (예정)
 - [ ] 파일 파서 통합 (PDF/XLSX/DOCX)

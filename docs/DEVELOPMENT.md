@@ -131,34 +131,50 @@ app.include_router(health_router, prefix="/api/v1")
 - `GET /api/v1/health/database` - DB 상태
 - `GET /api/v1/health/memory` - 메모리 사용량
 
-### **2. 하이브리드 검색 엔진 (`app/search/`)**
+### **2. 하이브리드 검색 엔진 (`app/search/`) - ✅ 완성**
 
-**역할**: IR + Vector 통합 검색
-**주요 기능**:
-- SQLite FTS5 기반 키워드 검색
-- FAISS 기반 벡터 유사도 검색  
-- RRF 알고리즘 기반 결과 융합
-- 한국어 텍스트 정규화
+**역할**: IR + Vector 통합 검색  
+**상태**: ✅ **완전 구현 완료**
 
+**구현된 기능**:
+- ✅ **FAISS 벡터 검색** (`app/search/faiss_engine.py`)
+- ✅ **SQLite FTS5 IR 검색** (`app/search/ir_engine.py`)
+- ✅ **RRF 융합 알고리즘** (`app/search/rrf.py`)
+- ✅ **임베딩 서비스** (`app/llm/embedding.py`)
+- ✅ **비동기 병렬 검색 및 통합** (`app/search/hybrid_engine.py`)
+- ✅ **검색 API 엔드포인트** (`app/api/search.py`)
+
+**실제 구현 코드**:
 ```python
-# app/search/hybrid_engine.py
+# app/search/hybrid_engine.py (실제 구현됨)
+import asyncio
+from app.search.faiss_engine import get_faiss_engine
+from app.search.ir_engine import get_ir_engine
+from app.llm.embedding import get_text_embedding
+
 class HybridSearchEngine:
     def __init__(self):
-        self.sqlite_searcher = SQLiteSearcher()
-        self.faiss_searcher = FAISSSearcher()
-        self.korean_processor = KoreanTextProcessor()
+        self.ir_engine = get_ir_engine()
+        self.vector_engine = get_faiss_engine()
+        # ...
     
-    def search(self, query: str, top_k: int = 20) -> List[SearchResult]:
-        # 1. 한국어 쿼리 정규화
-        normalized_query = self.korean_processor.normalize(query)
+    async def search(self, query: str, top_k: int = 20, filters: dict = None):
+        # 1. 쿼리 임베딩
+        query_embedding = get_text_embedding(query)
         
-        # 2. 병렬 검색
-        ir_results = self.sqlite_searcher.search(normalized_query, top_k)
-        vector_results = self.faiss_searcher.search(query, top_k)
+        # 2. 병렬 검색 (비동기)
+        ir_task = asyncio.to_thread(self.ir_engine.search, query, top_k * 2, filters=filters)
+        vector_task = asyncio.to_thread(self.vector_engine.search, query_embedding, top_k * 2, filter_metadata=filters)
+        
+        ir_results, vector_results = await asyncio.gather(ir_task, vector_task)
         
         # 3. RRF 융합
-        return self.rrf_fusion(ir_results, vector_results, top_k)
+        return self.rrf_algorithm.fuse_results(vector_results, ir_results, top_k)
 ```
+
+**사용 가능한 엔드포인트**:
+- `POST /api/v1/search/hybrid` - 하이브리드 검색 수행
+- `GET /api/v1/search/stats` - 검색 엔진 통계 정보
 
 ### **3. ETL 파이프라인 (`app/etl/`)**
 

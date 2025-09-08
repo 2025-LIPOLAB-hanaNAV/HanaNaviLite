@@ -13,6 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.config import settings
 from app.core.database import get_db_manager
 from app.api.health import router as health_router
+from app.api.search import router as search_router
+from app.search.faiss_engine import cleanup_faiss_engine
+from app.llm.embedding import get_embedding_manager
 
 
 # 로깅 설정
@@ -42,6 +45,10 @@ async def lifespan(app: FastAPI):
         logger.error(f"Database health check failed: {health_status}")
         raise RuntimeError("Database initialization failed")
     
+    # 임베딩 모델 로드
+    embedding_manager = get_embedding_manager()
+    embedding_manager.load_model()
+    
     logger.info(f"Database initialized: {health_status}")
     logger.info(f"Application started on {settings.api_host}:{settings.api_port}")
     
@@ -49,6 +56,8 @@ async def lifespan(app: FastAPI):
     
     # 종료시 실행
     logger.info("Shutting down HanaNaviLite application...")
+    cleanup_faiss_engine()
+    logger.info("FAISS engine cleaned up.")
 
 
 # FastAPI 앱 생성
@@ -82,7 +91,8 @@ async def global_exception_handler(request, exc):
 
 
 # 라우터 등록
-app.include_router(health_router, prefix="/api/v1")
+app.include_router(health_router, prefix="/api/v1", tags=["Health"])
+app.include_router(search_router, prefix="/api/v1", tags=["Search"])
 
 
 # 루트 엔드포인트
