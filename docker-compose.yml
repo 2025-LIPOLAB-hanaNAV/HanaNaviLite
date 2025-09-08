@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # HanaNaviLite 백엔드 API 서버
+  api:
+    build: .
+    container_name: hananavilite-api
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./models:/app/models
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+      - LOG_LEVEL=INFO
+      - MAX_MEMORY_GB=20
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - hananavilite
+
+  # Ollama LLM 서버
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hananavilite-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - hananavilite
+    # GPU 지원 (선택사항)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # React UI 개발 서버 (개발용)
+  ui-dev:
+    build:
+      context: ./ui/chatbot-react
+      dockerfile: Dockerfile
+    container_name: hananavilite-ui-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_RAG_BASE=http://localhost:8001/api/v1
+    volumes:
+      - ./ui/chatbot-react/src:/app/src
+    depends_on:
+      - api
+    profiles:
+      - dev
+    networks:
+      - hananavilite
+
+  # Nginx (프로덕션 UI 서빙)
+  nginx:
+    image: nginx:alpine
+    container_name: hananavilite-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ui/chatbot-react/dist:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    profiles:
+      - prod
+    networks:
+      - hananavilite
+
+volumes:
+  ollama_data:
+
+networks:
+  hananavilite:
+    driver: bridge

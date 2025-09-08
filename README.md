@@ -38,33 +38,77 @@
 
 ## 🚀 **빠른 시작**
 
-### **1. 환경 요구사항**
-- **하드웨어**: 16core CPU, 32GB RAM, A100 80G GPU
-- **소프트웨어**: Docker, Docker Compose, Git
+### **환경 요구사항**
+- **최소**: 8GB RAM, 4core CPU
+- **권장**: 16GB+ RAM, 8core+ CPU  
+- **소프트웨어**: Docker & Docker Compose 또는 Python 3.11+
 
-### **2. 실행**
+## 📦 **설치 방법**
+
+### **방법 1: Docker로 원클릭 실행 (권장)**
+
 ```bash
-# 레포 클론
-git clone <repository-url>
+# 1. 프로젝트 클론
+git clone https://github.com/your-org/HanaNaviLite.git
 cd HanaNaviLite
 
-# 환경변수 설정
+# 2. 환경 설정
 cp .env.example .env
 
-# 서비스 시작
-docker-compose up -d
+# 3. 전체 시스템 시작 (API + LLM + UI)
+make docker-up
 
-# 모델 다운로드
+# 4. 모델 다운로드 (최초 1회)
 make pull-model
-
-# 헬스체크
-curl http://localhost:8001/health
 ```
 
-### **3. 접속**
-- **챗봇 UI**: http://localhost:3000
-- **게시판 UI**: http://localhost:3001
-- **API 문서**: http://localhost:8001/docs
+**접속 주소:**
+- 🖥️ **메인 UI**: http://localhost (Nginx)
+- 🚀 **개발 UI**: http://localhost:3000 
+- 📡 **API 서버**: http://localhost:8001
+- 📚 **API 문서**: http://localhost:8001/docs
+
+### **방법 2: 로컬 개발 환경**
+
+```bash
+# 1. 프로젝트 클론
+git clone https://github.com/your-org/HanaNaviLite.git
+cd HanaNaviLite
+
+# 2. Python 환경 설정
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 3. 의존성 설치
+pip install -r requirements.txt
+
+# 4. React UI 의존성 설치
+cd ui/chatbot-react && npm install && cd ../..
+
+# 5. 개발 서버 시작
+make dev
+# 또는 수동 실행:
+# 터미널 1: python -m app.main
+# 터미널 2: cd ui/chatbot-react && npm run dev
+```
+
+**접속 주소:**
+- 🖥️ **React UI**: http://localhost:5175
+- 📡 **API 서버**: http://localhost:8001
+- 📚 **API 문서**: http://localhost:8001/docs
+
+### **방법 3: Ollama 서버 별도 설치**
+
+```bash
+# Ollama 설치 (Linux/macOS)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 모델 다운로드
+ollama pull gemma2:2b
+
+# 서버 시작
+ollama serve
+```
 
 ---
 
@@ -139,8 +183,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 # 기본 기능 테스트
 python test_basic.py
 
-# 완성도 검증 테스트
+# Phase 1-3 완성도 검증
 python test_phase1_complete.py
+
+# Phase 4 UI & 최적화 완성도 검증
+python test_phase4_complete.py
 
 # 헬스체크 테스트
 curl http://localhost:8001/api/v1/health
@@ -236,12 +283,12 @@ class HybridSearchEngine:
 - [x] RAG 파이프라인 완성
 - [x] 답변 품질 향상
 
-### **Phase 4: UI & 최적화** (예정)
-- [ ] React UI 포팅 및 통합
-- [ ] 성능 최적화 및 튜닝
-- [ ] 보안 강화
-- [ ] 배포 자동화
-- [ ] 사용자 테스트
+### **Phase 4: UI & 최적화** ✅ **완료**
+- [x] React UI 포팅 및 통합
+- [x] 성능 최적화 및 튜닝
+- [x] CORS 및 통신 최적화
+- [x] 실시간 상태 모니터링
+- [x] 통합 테스트 케이스 완성
 
 ---
 

@@ -8,6 +8,8 @@ from app.utils.answer_enhancement import enhance_answer_quality
 logger = logging.getLogger(__name__)
 
 
+from app.llm.ollama_client import get_ollama_client
+
 class RAGPipeline:
     """
     검색-증강-생성(RAG) 파이프라인

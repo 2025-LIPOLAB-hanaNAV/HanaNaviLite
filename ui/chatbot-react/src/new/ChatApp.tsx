@@ -57,7 +57,7 @@ const ChatApp: React.FC = () => {
     const refresh = async () => {
       try {
         setLoadingModels(true)
-        const r = await fetch(`${RAG_BASE}/llm/models`)
+        const r = await fetch(`${RAG_BASE}/health`)
         if (r.ok) {
           const data = await r.json()
           const items = (data?.models || []) as string[]
@@ -89,10 +89,10 @@ const ChatApp: React.FC = () => {
       const history = messages
         .filter(m => m.role === 'user' || m.role === 'assistant')
         .map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch(`${RAG_BASE}/rag/stream`, {
+      const res = await fetch(`${RAG_BASE}/rag/stream_query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: user.content, top_k: 8, enforce_policy: true, history, model: selectedModel || undefined }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: user.content }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)

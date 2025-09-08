@@ -115,3 +115,147 @@ For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/St
 2025-09-09 03:46:26,052 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '한화생명 시스템에 대해 알려줘'
 2025-09-09 03:46:26,052 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
 2025-09-09 03:46:26,606 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:03:07,316 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 04:03:07,373 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 04:03:07,373 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 04:03:07,374 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 04:03:11,408 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 04:03:11,408 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 04:03:11,408 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 04:03:11,408 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 4, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 04:03:11,408 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 04:07:45,809 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 04:07:45,866 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 04:07:45,866 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 04:07:45,866 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 04:07:49,883 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 04:07:49,883 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 04:07:49,883 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 04:07:49,883 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 4, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 04:07:49,883 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 04:12:43,401 - app.main - INFO - Starting HanaNaviLite application...
+2025-09-09 04:12:43,462 - app.llm.embedding - INFO - EmbeddingManager initialized - Model: dragonkue/snowflake-arctic-embed-l-v2.0-ko, Device: cuda
+2025-09-09 04:12:43,463 - app.llm.embedding - INFO - Loading embedding model: dragonkue/snowflake-arctic-embed-l-v2.0-ko on cuda
+2025-09-09 04:12:43,463 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: dragonkue/snowflake-arctic-embed-l-v2.0-ko
+2025-09-09 04:12:47,745 - sentence_transformers.SentenceTransformer - INFO - 1 prompt is loaded, with the key: query
+2025-09-09 04:12:47,745 - app.llm.embedding - INFO - Embedding model loaded successfully.
+2025-09-09 04:12:47,745 - app.main - INFO - Embedding model loaded successfully.
+2025-09-09 04:12:47,745 - app.main - INFO - Database initialized: {'status': 'healthy', 'database_path': '/home/jjkim/Projects/HanaNaviLite/data/hananavilite.db', 'documents_count': 1, 'chunks_count': 1, 'cache_count': 5, 'database_size_mb': 0.11, 'wal_mode': True}
+2025-09-09 04:12:47,745 - app.main - INFO - Application started on 0.0.0.0:8001
+2025-09-09 04:18:15,840 - app.search.ir_engine - INFO - SQLite FTS5 IR Engine initialized
+2025-09-09 04:18:15,840 - app.search.faiss_engine - INFO - FAISS Engine initialized - Dimension: 1024, GPU: False
+2025-09-09 04:18:15,840 - app.search.rrf - INFO - RRF Algorithm initialized - k=60, vector_weight=0.6, ir_weight=0.4
+2025-09-09 04:18:15,841 - app.utils.text_processor - INFO - Korean Text Processor initialized
+2025-09-09 04:18:15,841 - app.search.hybrid_engine - INFO - Hybrid Search Engine initialized
+2025-09-09 04:20:41,839 - app.llm.ollama_client - INFO - OllamaClient initialized - Base URL: http://localhost:11434, Model: gemma3:12b-it-qat
+2025-09-09 04:20:41,839 - app.llm.ollama_client - INFO - Warming up Ollama model: gemma3:12b-it-qat
+2025-09-09 04:20:46,047 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:20:46,047 - app.llm.ollama_client - INFO - Ollama model gemma3:12b-it-qat warmed up successfully.
+2025-09-09 04:20:46,047 - app.llm.rag_pipeline - INFO - RAG Pipeline initialized
+2025-09-09 04:21:35,883 - app.search.faiss_engine - INFO - Loaded FAISS index with 1 vectors
+2025-09-09 04:21:35,883 - app.search.faiss_engine - INFO - Loaded 1 ID mappings
+2025-09-09 04:21:35,883 - app.search.faiss_engine - INFO - Vector search returned 1 results
+2025-09-09 04:21:35,888 - app.search.ir_engine - INFO - IR search returned 0 results for query: 테스트
+2025-09-09 04:21:35,889 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 1 results
+2025-09-09 04:21:35,889 - app.search.rrf - INFO - RRF fusion returned 1 results from 1 vector + 0 IR results
+2025-09-09 04:21:35,889 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '테스트'
+2025-09-09 04:21:35,891 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: '안녕하세요'
+2025-09-09 04:21:35,898 - app.search.faiss_engine - INFO - Vector search returned 1 results
+2025-09-09 04:21:35,903 - app.search.ir_engine - INFO - IR search returned 0 results for query: 안녕하세
+2025-09-09 04:21:35,903 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 1 results
+2025-09-09 04:21:35,903 - app.search.rrf - INFO - RRF fusion returned 1 results from 1 vector + 0 IR results
+2025-09-09 04:21:35,903 - app.search.hybrid_engine - INFO - Hybrid search completed with 1 results for query: '안녕하세요'
+2025-09-09 04:21:35,903 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 04:21:36,204 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:22:08,954 - app.api.etl - INFO - File 'test_doc.txt' uploaded to '/home/jjkim/Projects/HanaNaviLite/uploads/test_doc.txt'
+2025-09-09 04:22:08,955 - app.etl.pipeline - INFO - ETL Pipeline initialized
+2025-09-09 04:22:08,955 - app.api.etl - INFO - Starting ETL in background for test_doc.txt
+2025-09-09 04:22:08,956 - app.etl.pipeline - INFO - Inserted document 'test_doc.txt' with ID: 2
+2025-09-09 04:22:08,960 - app.etl.pipeline - INFO - Parsing file: test_doc.txt
+2025-09-09 04:22:08,960 - app.etl.pipeline - INFO - Chunking text for document ID: 2
+2025-09-09 04:22:08,961 - app.etl.pipeline - INFO - Generating embeddings for 1 chunks...
+2025-09-09 04:22:09,082 - app.etl.pipeline - INFO - Adding 1 vectors to FAISS index...
+2025-09-09 04:22:09,191 - app.search.faiss_engine - INFO - Added 1 vectors to FAISS index
+2025-09-09 04:22:09,191 - app.search.faiss_engine - INFO - Saved FAISS index with 2 vectors
+2025-09-09 04:22:09,191 - app.etl.pipeline - INFO - Successfully processed and indexed file: test_doc.txt
+2025-09-09 04:22:09,191 - app.api.etl - INFO - ETL background task finished for test_doc.txt with status: success
+2025-09-09 04:22:30,092 - app.search.faiss_engine - INFO - Vector search returned 2 results
+2025-09-09 04:22:30,097 - app.search.ir_engine - INFO - IR search returned 1 results for query: 하나은행 디지털
+2025-09-09 04:22:30,097 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 2 results
+2025-09-09 04:22:30,097 - app.search.rrf - INFO - RRF fusion returned 3 results from 2 vector + 1 IR results
+2025-09-09 04:22:30,097 - app.search.hybrid_engine - INFO - Hybrid search completed with 3 results for query: '하나은행 디지털'
+2025-09-09 04:22:41,736 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: '하나은행의 주요 서비스는 무엇인가요?'
+2025-09-09 04:22:41,820 - app.search.faiss_engine - INFO - Vector search returned 2 results
+2025-09-09 04:22:41,825 - app.search.ir_engine - INFO - IR search returned 1 results for query: 하나은행 주 서비스 무엇인가요?
+2025-09-09 04:22:41,825 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 2 results
+2025-09-09 04:22:41,825 - app.search.rrf - INFO - RRF fusion returned 3 results from 2 vector + 1 IR results
+2025-09-09 04:22:41,825 - app.search.hybrid_engine - INFO - Hybrid search completed with 3 results for query: '하나은행의 주요 서비스는 무엇인가요?'
+2025-09-09 04:22:41,825 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 04:22:42,370 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:31:47,309 - app.api.etl - INFO - File 'phase4_test.md' uploaded to '/home/jjkim/Projects/HanaNaviLite/uploads/phase4_test.md'
+2025-09-09 04:31:47,309 - app.api.etl - INFO - Starting ETL in background for phase4_test.md
+2025-09-09 04:31:47,310 - app.etl.pipeline - INFO - Inserted document 'phase4_test.md' with ID: 3
+2025-09-09 04:31:47,314 - app.etl.pipeline - INFO - Parsing file: phase4_test.md
+2025-09-09 04:31:47,314 - app.etl.pipeline - INFO - Chunking text for document ID: 3
+2025-09-09 04:31:47,315 - app.etl.pipeline - INFO - Generating embeddings for 1 chunks...
+2025-09-09 04:31:47,339 - app.etl.pipeline - INFO - Adding 1 vectors to FAISS index...
+2025-09-09 04:31:47,508 - app.search.faiss_engine - INFO - Added 1 vectors to FAISS index
+2025-09-09 04:31:47,509 - app.search.faiss_engine - INFO - Saved FAISS index with 3 vectors
+2025-09-09 04:31:47,509 - app.etl.pipeline - INFO - Successfully processed and indexed file: phase4_test.md
+2025-09-09 04:31:47,509 - app.api.etl - INFO - ETL background task finished for phase4_test.md with status: success
+2025-09-09 04:31:50,323 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:31:50,328 - app.search.ir_engine - INFO - IR search returned 1 results for query: Phase 4 기능
+2025-09-09 04:31:50,328 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 3 results
+2025-09-09 04:31:50,328 - app.search.rrf - INFO - RRF fusion returned 4 results from 3 vector + 1 IR results
+2025-09-09 04:31:50,328 - app.search.hybrid_engine - INFO - Hybrid search completed with 4 results for query: 'Phase 4 기능'
+2025-09-09 04:32:14,808 - app.api.etl - INFO - File 'phase4_test.md' uploaded to '/home/jjkim/Projects/HanaNaviLite/uploads/phase4_test.md'
+2025-09-09 04:32:14,809 - app.api.etl - INFO - Starting ETL in background for phase4_test.md
+2025-09-09 04:32:14,809 - app.etl.pipeline - INFO - Document 'phase4_test.md' already processed. Skipping.
+2025-09-09 04:32:14,809 - app.api.etl - INFO - ETL background task finished for phase4_test.md with status: skipped
+2025-09-09 04:32:17,821 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:32:17,825 - app.search.ir_engine - INFO - Returned cached IR search results for query: Phase 4 기능
+2025-09-09 04:32:17,825 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 3 results
+2025-09-09 04:32:17,825 - app.search.rrf - INFO - RRF fusion returned 4 results from 3 vector + 1 IR results
+2025-09-09 04:32:17,825 - app.search.hybrid_engine - INFO - Hybrid search completed with 4 results for query: 'Phase 4 기능'
+2025-09-09 04:32:36,491 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: 'what is banking service?'
+2025-09-09 04:32:36,569 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:32:36,574 - app.search.ir_engine - INFO - IR search returned 0 results for query: what banking service?
+2025-09-09 04:32:36,575 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 3 results
+2025-09-09 04:32:36,575 - app.search.rrf - INFO - RRF fusion returned 3 results from 3 vector + 0 IR results
+2025-09-09 04:32:36,575 - app.search.hybrid_engine - INFO - Hybrid search completed with 3 results for query: 'what is banking service?'
+2025-09-09 04:32:36,575 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 04:32:41,338 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:32:56,601 - app.api.etl - INFO - File 'phase4_test.md' uploaded to '/home/jjkim/Projects/HanaNaviLite/uploads/phase4_test.md'
+2025-09-09 04:32:56,601 - app.api.etl - INFO - Starting ETL in background for phase4_test.md
+2025-09-09 04:32:56,602 - app.etl.pipeline - INFO - Document 'phase4_test.md' already processed. Skipping.
+2025-09-09 04:32:56,602 - app.api.etl - INFO - ETL background task finished for phase4_test.md with status: skipped
+2025-09-09 04:32:59,681 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:32:59,685 - app.search.ir_engine - INFO - Returned cached IR search results for query: Phase 4 기능
+2025-09-09 04:32:59,685 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 3 results
+2025-09-09 04:32:59,685 - app.search.rrf - INFO - RRF fusion returned 4 results from 3 vector + 1 IR results
+2025-09-09 04:32:59,686 - app.search.hybrid_engine - INFO - Hybrid search completed with 4 results for query: 'Phase 4 기능'
+2025-09-09 04:33:16,010 - app.api.etl - INFO - File 'phase4_test.md' uploaded to '/home/jjkim/Projects/HanaNaviLite/uploads/phase4_test.md'
+2025-09-09 04:33:16,010 - app.api.etl - INFO - Starting ETL in background for phase4_test.md
+2025-09-09 04:33:16,010 - app.etl.pipeline - INFO - Document 'phase4_test.md' already processed. Skipping.
+2025-09-09 04:33:16,011 - app.api.etl - INFO - ETL background task finished for phase4_test.md with status: skipped
+2025-09-09 04:33:19,014 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: 'What are the main features of Phase 4?'
+2025-09-09 04:33:19,097 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:33:19,102 - app.search.ir_engine - INFO - IR search returned 1 results for query: What main features Phase 4?
+2025-09-09 04:33:19,102 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 3 results
+2025-09-09 04:33:19,102 - app.search.rrf - INFO - RRF fusion returned 4 results from 3 vector + 1 IR results
+2025-09-09 04:33:19,102 - app.search.hybrid_engine - INFO - Hybrid search completed with 4 results for query: 'What are the main features of Phase 4?'
+2025-09-09 04:33:19,103 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 04:33:19,830 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-09-09 04:33:19,839 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:33:19,844 - app.search.ir_engine - INFO - Returned cached IR search results for query: Phase 4 기능
+2025-09-09 04:33:19,844 - app.search.hybrid_engine - INFO - IR search found 1 results, Vector search found 3 results
+2025-09-09 04:33:19,845 - app.search.rrf - INFO - RRF fusion returned 4 results from 3 vector + 1 IR results
+2025-09-09 04:33:19,845 - app.search.hybrid_engine - INFO - Hybrid search completed with 4 results for query: 'Phase 4 기능'
+2025-09-09 04:33:20,850 - app.llm.rag_pipeline - INFO - Performing hybrid search for query: 'performance test'
+2025-09-09 04:33:20,858 - app.search.faiss_engine - INFO - Vector search returned 3 results
+2025-09-09 04:33:20,862 - app.search.ir_engine - INFO - IR search returned 0 results for query: performance test
+2025-09-09 04:33:20,863 - app.search.hybrid_engine - INFO - IR search found 0 results, Vector search found 3 results
+2025-09-09 04:33:20,863 - app.search.rrf - INFO - RRF fusion returned 3 results from 3 vector + 0 IR results
+2025-09-09 04:33:20,863 - app.search.hybrid_engine - INFO - Hybrid search completed with 3 results for query: 'performance test'
+2025-09-09 04:33:20,863 - app.llm.rag_pipeline - INFO - Generating answer from LLM...
+2025-09-09 04:33:21,355 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
