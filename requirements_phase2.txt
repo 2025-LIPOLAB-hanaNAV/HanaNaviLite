@@ -1,0 +1,20 @@
+# Phase 2: Smart OCR + Layout Detection 이미지 처리
+# HanaNaviLite 경량 시스템을 위한 최소 의존성
+
+# 이미지 처리 및 컴퓨터 비전
+opencv-python==4.8.1.78        # 이미지 전처리, 레이아웃 감지 (~150MB)
+Pillow==10.0.1                  # 이미지 로드/저장 (~10MB)
+
+# OCR 엔진
+pytesseract==0.3.10             # OCR 인터페이스 (~1MB)
+# tesseract-ocr 시스템 패키지 필요: sudo apt-get install tesseract-ocr tesseract-ocr-kor
+
+# 데이터 처리 (이미 설치되어 있음)
+pandas>=2.0.3                   # 테이블 구조화
+numpy>=1.24.0                   # 배열 처리
+
+# 추가 이미지 전처리 (선택적)
+# scikit-image==0.21.0          # 고급 이미지 처리 (필요시 추가)
+
+# 총 예상 메모리 사용량: ~200MB (VLM 8GB+ 대비 경량)
+# 시스템 요구사항: tesseract-ocr, tesseract-ocr-kor 언어팩
