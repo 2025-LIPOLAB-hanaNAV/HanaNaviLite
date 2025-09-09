@@ -16,6 +16,8 @@ from app.api.health import router as health_router
 from app.api.search import router as search_router
 from app.api.etl import router as etl_router
 from app.api.rag import router as rag_router
+from app.api.statistics import router as statistics_router
+from app.api.admin import router as admin_router
 from app.search.faiss_engine import cleanup_faiss_engine
 from app.llm.embedding import get_embedding_manager
 
@@ -103,6 +105,8 @@ app.include_router(health_router, prefix="/api/v1", tags=["Health"])
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
 app.include_router(etl_router, prefix="/api/v1", tags=["ETL"])
 app.include_router(rag_router, prefix="/api/v1", tags=["RAG"])
+app.include_router(statistics_router, prefix="/api/v1", tags=["Statistics"])
+app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
 
 
 # 루트 엔드포인트

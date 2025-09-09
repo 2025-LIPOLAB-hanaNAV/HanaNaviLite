@@ -476,7 +476,7 @@ async def submit_feedback(
             raise HTTPException(status_code=404, detail="Session not found")
         
         # 피드백 업데이트 (실제 구현 필요)
-        # session_manager.update_turn_feedback(session_id, turn_number, rating, comment)
+                session_manager.update_turn_feedback(session_id, turn_number, rating, comment)
         
         return {"message": "Feedback submitted successfully"}
         

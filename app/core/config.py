@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     
     # 임베딩 설정
-    embedding_model: str = "dragonkue/snowflake-arctic-embed-l-v2.0-ko"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embedding_batch_size: int = 32
     
     # 검색 설정

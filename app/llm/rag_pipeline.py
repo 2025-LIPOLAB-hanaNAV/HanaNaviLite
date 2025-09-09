@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, AsyncGenerator
 from app.search.hybrid_engine import get_hybrid_search_engine, HybridSearchResult
 from app.llm.ollama_client import get_ollama_client
 from app.utils.answer_enhancement import enhance_answer_quality
+from app.rag.structured_qa import get_structured_qa_engine, StructuredQAEngine
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class RAGPipeline:
     def __init__(self):
         self.search_engine = get_hybrid_search_engine()
         self.llm_client = get_ollama_client()
+        self.structured_qa_engine = get_structured_qa_engine()
         logger.info("RAG Pipeline initialized")
 
     def _build_prompt(self, query: str, context_chunks: List[HybridSearchResult]) -> str:
@@ -31,11 +33,33 @@ class RAGPipeline:
         prompt = f"아래의 정보를 바탕으로 다음 질문에 대해 한국어로 명확하고 간결하게 답변해 주세요.\n\n[정보]\n{context_str}[질문]\n{query}\n\n답변:"
         return prompt
 
+    def _is_structured_data_query(self, query: str) -> bool:
+        """
+        쿼리가 구조화된 데이터에 대한 질문인지 감지합니다.
+        """
+        structured_keywords = ["표", "테이블", "차트", "데이터", "통계", "평균", "합계", "최대", "최소", "얼마", "몇", "비율"]
+        query_lower = query.lower()
+        return any(keyword in query_lower for keyword in structured_keywords)
+
     async def query(self, user_query: str) -> Dict[str, Any]:
         """
         RAG 파이프라인 실행 (스트리밍 미사용)
         """
         try:
+            # 0. 구조화된 데이터 질문 감지
+            if self._is_structured_data_query(user_query):
+                # 임시로 빈 데이터 전달. 실제로는 검색 결과에서 구조화된 데이터를 추출해야 함.
+                # 이 부분은 '표/차트 구조 분석'의 '표 데이터 구조화'가 완료된 후 연동
+                logger.info(f"Detected structured data query: {user_query}. Routing to StructuredQAEngine.")
+                # For now, we'll simulate some structured data or fetch from a mock source
+                # In a real scenario, this data would come from parsing documents
+                mock_structured_data = [
+                    {"항목": "총 매출", "값": "1,200억원", "기간": "2023년"},
+                    {"항목": "영업 이익", "값": "150억원", "기간": "2023년"},
+                    {"항목": "순이익", "값": "100억원", "기간": "2023년"}
+                ]
+                return await self.structured_qa_engine.answer_structured_data_query(user_query, mock_structured_data)
+
             # 1. 하이브리드 검색으로 컨텍스트 검색
             logger.info(f"Performing hybrid search for query: '{user_query}'")
             context_chunks = await self.search_engine.search(user_query, top_k=5)
@@ -75,6 +99,18 @@ class RAGPipeline:
         RAG 파이프라인 실행 (스트리밍)
         """
         try:
+            # 0. 구조화된 데이터 질문 감지
+            if self._is_structured_data_query(user_query):
+                logger.info(f"Detected structured data query: {user_query}. Routing to StructuredQAEngine (streaming).")
+                mock_structured_data = [
+                    {"항목": "총 매출", "값": "1,200억원", "기간": "2023년"},
+                    {"항목": "영업 이익", "값": "150억원", "기간": "2023년"},
+                    {"항목": "순이익", "값": "100억원", "기간": "2023년"}
+                ]
+                structured_answer_data = await self.structured_qa_engine.answer_structured_data_query(user_query, mock_structured_data)
+                yield {"type": "result", "data": structured_answer_data}
+                return
+
             # 1. 컨텍스트 검색
             logger.info(f"Performing hybrid search for query: '{user_query}'")
             context_chunks = await self.search_engine.search(user_query, top_k=5)

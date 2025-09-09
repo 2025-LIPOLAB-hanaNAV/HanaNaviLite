@@ -579,6 +579,36 @@ class ConversationSessionManager:
             
             return deleted_count
 
+    def update_turn_feedback(
+        self,
+        session_id: str,
+        turn_number: int,
+        rating: int,
+        comment: Optional[str] = None
+    ):
+        """턴별 피드백 업데이트
+        
+        Args:
+            session_id: 세션 ID
+            turn_number: 턴 번호
+            rating: 피드백 별점 (1-5)
+            comment: 피드백 코멘트 (선택적)
+        """
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                UPDATE conversation_turns
+                SET feedback_rating = ?,
+                    feedback_comment = ?,
+                    created_at = CURRENT_TIMESTAMP -- 또는 updated_at 컬럼 추가
+                WHERE session_id = ? AND turn_number = ?
+            """, (rating, comment, session_id, turn_number))
+            
+            conn.commit()
+        
+        logger.info(f"Updated feedback for session {session_id}, turn {turn_number}")
+
 
 # 전역 인스턴스
 _session_manager = None

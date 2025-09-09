@@ -7,6 +7,7 @@ from app.core.database import get_db_manager
 from app.parser.pdf_parser import parse_pdf
 from app.parser.docx_parser import parse_docx
 from app.parser.xlsx_parser import parse_xlsx
+from app.parser.image_ocr_parser import SmartOCRImageParser, create_parser as create_image_parser
 from app.utils.text_processor import get_text_processor
 from app.llm.embedding import get_embedding_manager
 from app.search.faiss_engine import get_faiss_engine
@@ -30,6 +31,12 @@ class ETLPipeline:
             ".xlsx": parse_xlsx,
             ".txt": lambda p: [open(p, "r", encoding="utf-8").read()],
             ".md": lambda p: [open(p, "r", encoding="utf-8").read()],
+            ".jpg": lambda p: [create_image_parser().parse_file(p).content],
+            ".jpeg": lambda p: [create_image_parser().parse_file(p).content],
+            ".png": lambda p: [create_image_parser().parse_file(p).content],
+            ".gif": lambda p: [create_image_parser().parse_file(p).content],
+            ".bmp": lambda p: [create_image_parser().parse_file(p).content],
+            ".tiff": lambda p: [create_image_parser().parse_file(p).content],
         }
         logger.info("ETL Pipeline initialized")
 

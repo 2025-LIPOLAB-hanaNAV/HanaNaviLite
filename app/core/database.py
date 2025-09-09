@@ -3,6 +3,8 @@ import os
 from typing import Optional, Dict, Any
 from contextlib import contextmanager
 from app.core.config import get_database_path
+from app.core.conversation_schema import apply_conversation_migration
+from app.core.statistics_schema import apply_statistics_migration
 import logging
 
 logger = logging.getLogger(__name__)
@@ -150,6 +152,12 @@ class DatabaseManager:
 
             self._create_indexes(cur)
             self._create_triggers(cur)
+            
+            # Apply conversation schema migration
+            apply_conversation_migration(self)
+            
+            # Apply statistics schema migration
+            apply_statistics_migration(self)
 
             logger.info("Database initialized successfully")
 
@@ -242,6 +250,26 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return {"status": "unhealthy", "error": str(e)}
+
+    def get_setting(self, key: str, default_value: Optional[str] = None) -> Optional[str]:
+        """시스템 설정 값을 조회합니다."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            if row:
+                return row[0]
+            return default_value
+
+    def set_setting(self, key: str, value: str, description: Optional[str] = None):
+        """시스템 설정 값을 저장하거나 업데이트합니다."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO system_settings (key, value, description) VALUES (?, ?, ?)",
+                (key, value, description),
+            )
+            conn.commit()
 
 
 # 전역 인스턴스

@@ -7,10 +7,9 @@ from app.search.ir_engine import get_ir_engine, IRSearchResult
 from app.search.rrf import get_rrf_algorithm, HybridSearchResult
 from app.llm.embedding import get_text_embedding
 from app.utils.text_processor import get_text_processor
-from app.core.config import get_settings
+from app.core.performance_tuner import get_performance_tuner
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 
 class HybridSearchEngine:
@@ -23,6 +22,7 @@ class HybridSearchEngine:
         self.vector_engine = get_faiss_engine()
         self.rrf_algorithm = get_rrf_algorithm()
         self.text_processor = get_text_processor()
+        self.performance_tuner = get_performance_tuner()
         
         logger.info("Hybrid Search Engine initialized")
     
@@ -47,7 +47,15 @@ class HybridSearchEngine:
             logger.info(f"IR search found {len(ir_results)} results, Vector search found {len(vector_results)} results")
             
             # 3. RRF 융합
-            fused_results = self.rrf_algorithm.fuse_results(vector_results, ir_results, top_k)
+            # Get current weights from PerformanceTuner
+            weights = self.performance_tuner.get_search_weights()
+            fused_results = self.rrf_algorithm.fuse_results(
+                vector_results,
+                ir_results,
+                top_k,
+                vector_weight=weights["vector_weight"],
+                ir_weight=weights["ir_weight"]
+            )
             
             # 4. (선택적) 다양성 필터링
             # final_results = self.rrf_algorithm.get_diversity_filtered_results(fused_results)

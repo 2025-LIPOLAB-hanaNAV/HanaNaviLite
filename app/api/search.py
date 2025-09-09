@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
 import logging
+from datetime import datetime
 
 from app.search.hybrid_engine import get_hybrid_search_engine, HybridSearchResult, HybridSearchEngine
+from app.core.database import get_db_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -21,12 +23,39 @@ async def hybrid_search(
     - **top_k**: 반환할 결과 수
     - **filters**: 검색 필터 (JSON 형식)
     """
+    start_time = datetime.now()
+    success = False
+    error_message = None
+    results_count = 0
+
     try:
         results = await engine.search(query, top_k, filters)
+        results_count = len(results)
+        success = True
         return results
     except Exception as e:
         logger.error(f"Hybrid search API error: {e}")
+        error_message = str(e)
         raise HTTPException(status_code=500, detail="검색 중 오류가 발생했습니다.")
+    finally:
+        end_time = datetime.now()
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        db_manager = get_db_manager()
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO query_logs (query_text, search_type, results_count, response_time_ms, success, error_message, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                query,
+                "hybrid_search",
+                results_count,
+                response_time_ms,
+                success,
+                error_message,
+                datetime.now()
+            ))
+            conn.commit()
 
 
 @router.get("/search/stats", response_model=Dict[str, Any])

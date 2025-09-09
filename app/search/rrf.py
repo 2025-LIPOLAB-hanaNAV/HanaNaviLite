@@ -49,7 +49,9 @@ class RRFAlgorithm:
         self,
         vector_results: List[VectorSearchResult],
         ir_results: List[IRSearchResult],
-        top_k: int = 20
+        top_k: int = 20,
+        vector_weight: float = 0.6,
+        ir_weight: float = 0.4
     ) -> List[HybridSearchResult]:
         """
         RRF를 사용하여 벡터와 IR 검색 결과 융합
