@@ -20,14 +20,16 @@ class PerformanceTuner:
         self._initialize_default_weights()
     
     def _initialize_default_weights(self):
-        """기본 검색 가중치 설정 (system_settings에 없으면 초기화)"""
+        """기본 검색 가중치 설정 (system_settings에 없으면 초기화).
+        벡터 검색과 IR 검색의 초기 가중치를 데이터베이스에 저장합니다.
+        """
         if self.db_manager.get_setting("vector_weight") is None:
             self.db_manager.set_setting("vector_weight", "0.6", "벡터 검색 가중치")
         if self.db_manager.get_setting("ir_weight") is None:
             self.db_manager.set_setting("ir_weight", "0.4", "IR 검색 가중치")
         logger.info("Default search weights initialized/checked.")
 
-    def get_search_weights(self) -> Dict[str, float]:
+    def get_search_weights(self) -> dict[str, float]:
         """현재 검색 가중치를 조회합니다."""
         vector_weight = float(self.db_manager.get_setting("vector_weight", "0.6"))
         ir_weight = float(self.db_manager.get_setting("ir_weight", "0.4"))
@@ -40,7 +42,9 @@ class PerformanceTuner:
         logger.info(f"Search weights updated: vector={vector_weight}, ir={ir_weight}")
 
     def tune_search_weights(self, strategy: str = "basic_optimization"):
-        """검색 가중치를 튜닝합니다 (예시)."""
+        """검색 가중치를 튜닝합니다 (예시).
+        주어진 전략에 따라 벡터 검색과 IR 검색의 가중치를 조정하여 검색 성능을 최적화합니다.
+        """
         current_weights = self.get_search_weights()
         logger.info(f"Starting search weight tuning with strategy: {strategy}. Current weights: {current_weights}")
 

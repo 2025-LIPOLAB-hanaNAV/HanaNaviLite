@@ -18,6 +18,7 @@ from app.api.etl import router as etl_router
 from app.api.rag import router as rag_router
 from app.api.statistics import router as statistics_router
 from app.api.admin import router as admin_router
+from app.api.evaluation import router as evaluation_router
 from app.search.faiss_engine import cleanup_faiss_engine
 from app.llm.embedding import get_embedding_manager
 
@@ -107,6 +108,7 @@ app.include_router(etl_router, prefix="/api/v1", tags=["ETL"])
 app.include_router(rag_router, prefix="/api/v1", tags=["RAG"])
 app.include_router(statistics_router, prefix="/api/v1", tags=["Statistics"])
 app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
+app.include_router(evaluation_router, prefix="/api/v1", tags=["Evaluation"])
 
 
 # 루트 엔드포인트

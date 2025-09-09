@@ -24,7 +24,8 @@ async def reindex_documents(
 ):
     """
     문서를 재색인합니다. (백그라운드 작업)
-    - **document_ids**: 재색인할 문서 ID 목록. 지정하지 않으면 모든 문서를 재색인합니다.
+    지정된 문서 ID에 해당하는 문서를 다시 파싱, 임베딩, 인덱싱합니다.
+    document_ids가 제공되지 않으면 모든 문서를 재색인합니다.
     """
     try:
         # 비동기적으로 재색인 작업 시작
@@ -42,17 +43,20 @@ async def reindex_documents(
 @router.post("/clear_cache")
 async def clear_cache():
     """
-    모든 캐시를 지웁니다.
+    검색 캐시 및 FAISS 인덱스 캐시를 지웁니다.
+    시스템의 캐시된 데이터를 초기화하여 최신 정보를 반영하도록 합니다.
     """
     db_manager = get_db_manager()
     faiss_engine = get_faiss_engine()
     
     try:
+        # 데이터베이스 검색 캐시 삭제
         with db_manager.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM search_cache")
             conn.commit()
         
+        # FAISS 인메모리 캐시 삭제
         faiss_engine.clear_cache()
         
         logger.info("All caches cleared successfully.")
@@ -66,6 +70,7 @@ async def clear_cache():
 async def get_system_status():
     """
     시스템의 현재 상태를 조회합니다.
+    데이터베이스 상태, FAISS 인덱스 상태 등 주요 시스템 컴포넌트의 헬스체크 정보를 반환합니다.
     """
     db_manager = get_db_manager()
     faiss_engine = get_faiss_engine()
@@ -93,8 +98,7 @@ async def summarize_text(
 ):
     """
     텍스트를 요약합니다.
-    - **text**: 요약할 텍스트
-    - **style**: 요약 스타일 (현재는 'executive' 또는 'simple' 지원)
+    긴 텍스트를 지정된 스타일에 따라 간결하게 요약하여 반환합니다.
     """
     try:
         adjuster = AnswerStyleAdjuster()
@@ -124,8 +128,7 @@ async def generate_questions(
 ):
     """
     주어진 텍스트에서 질문을 자동 생성합니다.
-    - **text**: 질문을 생성할 텍스트
-    - **num_questions**: 생성할 질문의 개수
+    주어진 텍스트의 내용을 바탕으로 LLM을 사용하여 관련 질문 목록을 생성합니다.
     """
     try:
         questions = await question_generator.generate_questions(text, num_questions)

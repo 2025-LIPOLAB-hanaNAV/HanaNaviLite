@@ -54,13 +54,18 @@ class QuestionGenerator:
     def _parse_questions_from_text(self, text: str) -> List[str]:
         """
         LLM 응답 텍스트에서 질문 목록을 파싱합니다.
+        LLM이 생성한 텍스트에서 번호 매겨진 목록이나 불릿 포인트로 제시된 질문들을 추출합니다.
         """
         questions = []
         # 번호가 매겨진 목록 (예: 1. 질문, 2. 질문) 파싱
         for line in text.split('\n'):
+            # 라인이 번호로 시작하는지 확인 (1. 2. 등)
             if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+                # 번호와 점을 제거하고 질문 텍스트만 추출
                 questions.append(line.strip()[line.strip().find('.') + 1:].strip())
+            # 라인이 불릿 포인트로 시작하는지 확인 (예: - 질문)
             elif line.strip().startswith('- '): # 불릿 포인트도 고려
+                # 불릿 포인트와 공백을 제거하고 질문 텍스트만 추출
                 questions.append(line.strip()[2:].strip())
         return questions
 
