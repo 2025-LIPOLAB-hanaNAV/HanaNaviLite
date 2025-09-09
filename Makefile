@@ -28,7 +28,7 @@ help:
 install:
 	@echo "🔧 Python 환경 설정 중..."
 	python -m venv venv
-	source venv/bin/activate && pip install -r requirements.txt
+	. venv/bin/activate && pip install -r requirements.txt
 	@echo "🔧 Node.js 의존성 설치 중..."
 	cd ui/chatbot-react && npm install
 	@echo "✅ 설치 완료!"
@@ -41,21 +41,19 @@ dev:
 	@echo "API 문서: http://localhost:8001/docs"
 	@echo ""
 	@echo "Ctrl+C로 종료하세요."
-	source venv/bin/activate && python -m app.main &
+	. venv/bin/activate && python -m app.main &
 	cd ui/chatbot-react && npm run dev
 
 # 테스트 실행
 test:
 	@echo "🧪 테스트 실행 중..."
-	source venv/bin/activate && python test_basic.py
-	source venv/bin/activate && python test_phase1_complete.py
-	source venv/bin/activate && python test_phase4_complete.py
+	. venv/bin/activate && python -m pytest tests/ -v
 	@echo "✅ 모든 테스트 통과!"
 
 # 코드 품질 검사
 lint:
 	@echo "🔍 코드 품질 검사 중..."
-	source venv/bin/activate && python -m flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+	. venv/bin/activate && python -m flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
 	@echo "✅ 코드 품질 검사 완료!"
 
 # Docker 이미지 빌드
