@@ -86,9 +86,17 @@ class RAGPipeline:
                 }
                 for chunk in context_chunks
             ]
-            # enhanced_answer, final_citations = enhance_answer_quality(answer, citations, user_query)
+            enhanced_answer, final_citations, verified = enhance_answer_quality(
+                answer, citations, user_query
+            )
 
-            return {"answer": answer, "sources": citations}
+            if not verified:
+                logger.warning(
+                    "Citation verification failed, adding clarification note."
+                )
+                enhanced_answer += "\n\n*인용 검증에 실패하여 추가 확인이 필요할 수 있습니다.*"
+
+            return {"answer": enhanced_answer, "sources": final_citations}
 
         except Exception as e:
             logger.error(f"RAG pipeline failed for query '{user_query}': {e}", exc_info=True)
@@ -142,8 +150,16 @@ class RAGPipeline:
                         }
                         for c in context_chunks
                     ]
-                    # enhanced_answer, final_citations = enhance_answer_quality(full_answer, citations, user_query)
-                    yield {"type": "result", "data": {"answer": full_answer, "sources": citations}}
+                    enhanced_answer, final_citations, verified = enhance_answer_quality(
+                        full_answer, citations, user_query
+                    )
+                    if not verified:
+                        logger.warning(
+                            "Citation verification failed, adding clarification note."
+                        )
+                        enhanced_answer += "\n\n*인용 검증에 실패하여 추가 확인이 필요할 수 있습니다.*"
+
+                    yield {"type": "result", "data": {"answer": enhanced_answer, "sources": final_citations}}
 
         except Exception as e:
             logger.error(f"Streaming RAG pipeline failed for query '{user_query}': {e}", exc_info=True)
