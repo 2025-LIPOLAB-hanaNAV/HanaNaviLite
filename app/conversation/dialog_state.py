@@ -7,10 +7,11 @@
 import re
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 import logging
+from abc import ABC, abstractmethod
 
 from app.conversation.session_manager import (
     get_session_manager, 
@@ -54,6 +55,23 @@ class DialogContext:
     state_changed_at: Optional[datetime] = None
     last_activity: Optional[datetime] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+class AgentStateDecider(ABC):
+    """대화 상태 예측기 인터페이스"""
+
+    @abstractmethod
+    def predict_state(self, context: "DialogContext", message: str) -> Tuple[DialogState, float]:
+        """상태와 신뢰도를 예측"""
+        raise NotImplementedError
+
+
+class DefaultAgentStateDecider(AgentStateDecider):
+    """기본 구현 - 규칙 기반 로직 사용"""
+
+    def predict_state(self, context: "DialogContext", message: str) -> Tuple[DialogState, float]:
+        # 기본값은 현재 상태 유지, 신뢰도 0으로 규칙이 우선됨
+        return context.current_state, 0.0
 
 
 class TopicDetector:
@@ -193,12 +211,15 @@ class TopicDetector:
 
 class DialogStateManager:
     """대화 상태 관리자"""
-    
-    def __init__(self):
+
+    def __init__(self, state_decider: Optional[AgentStateDecider] = None):
         self.session_manager = get_session_manager()
         self.topic_detector = TopicDetector()
         self.active_contexts: Dict[str, DialogContext] = {}
-        
+
+        # 상태 예측기
+        self.state_decider = state_decider or DefaultAgentStateDecider()
+
         # 상태 전환 규칙
         self.state_transitions = {
             DialogState.INITIAL: [DialogState.ACTIVE, DialogState.ERROR],
@@ -332,33 +353,40 @@ class DialogStateManager:
         """
         current_state = context.current_state
         message_lower = user_message.lower()
-        
+
+        rule_state = current_state
+
         # 종료 신호 확인
         end_signals = ['끝', '종료', '마침', '그만', '나가기', '종료해줘']
         if any(signal in message_lower for signal in end_signals):
-            return DialogState.ENDING
-        
+            rule_state = DialogState.ENDING
+
         # 명확화 요청 확인
-        clarification_signals = ['뭐야', '무슨', '설명해', '모르겠', '이해 안', '다시']
-        if any(signal in message_lower for signal in clarification_signals):
-            return DialogState.CLARIFYING
-        
+        elif any(signal in message_lower for signal in ['뭐야', '무슨', '설명해', '모르겠', '이해 안', '다시']):
+            rule_state = DialogState.CLARIFYING
+
         # 주제 전환 감지
-        if topic_shift_detected:
-            return DialogState.TOPIC_SHIFT
-        
+        elif topic_shift_detected:
+            rule_state = DialogState.TOPIC_SHIFT
+
         # 상태별 전환 로직
-        if current_state == DialogState.INITIAL:
+        elif current_state == DialogState.INITIAL:
             if detected_topics:
-                return DialogState.ACTIVE
-        
+                rule_state = DialogState.ACTIVE
         elif current_state == DialogState.WAITING:
-            return DialogState.ACTIVE
-        
+            rule_state = DialogState.ACTIVE
         elif current_state in [DialogState.TOPIC_SHIFT, DialogState.CLARIFYING]:
-            return DialogState.ACTIVE
-        
-        return current_state
+            rule_state = DialogState.ACTIVE
+
+        # 상태 예측기 사용
+        predicted_state, confidence = self.state_decider.predict_state(context, user_message)
+        if confidence > 0.5 and predicted_state != rule_state:
+            logger.debug(
+                f"State decider overrides rule: {rule_state.value} -> {predicted_state.value} (conf={confidence})"
+            )
+            return predicted_state
+
+        return rule_state
     
     def _transition_state(self, context: DialogContext, new_state: DialogState):
         """상태 전환 실행
