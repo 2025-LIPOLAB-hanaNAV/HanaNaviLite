@@ -114,6 +114,16 @@ class DatabaseManager:
                 );
             """)
 
+            # FTS5 (Full-Text Search) 가상 테이블: 청크 내용에 대한 전문 검색 지원
+            cur.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+                    content,
+                    content=chunks,
+                    content_rowid=id,
+                    tokenize='porter unicode61'
+                );
+            """)
+
             # search_cache 테이블: 이전에 수행된 검색 쿼리 결과를 캐시하여 응답 속도 향상
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS search_cache (
@@ -191,6 +201,7 @@ class DatabaseManager:
             "CREATE INDEX IF NOT EXISTS idx_documents_file_type ON documents(file_type);",
             "CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at);",
             "CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_created_at ON chunks(created_at);",
             "CREATE INDEX IF NOT EXISTS idx_search_cache_query_hash ON search_cache(query_hash);",
             "CREATE INDEX IF NOT EXISTS idx_search_cache_created_at ON search_cache(created_at);",
             "CREATE INDEX IF NOT EXISTS idx_query_logs_session_id ON query_logs(session_id);",
@@ -214,6 +225,10 @@ class DatabaseManager:
         cur.execute("DROP TRIGGER IF EXISTS documents_fts_insert;")
         cur.execute("DROP TRIGGER IF EXISTS documents_fts_update;")
         cur.execute("DROP TRIGGER IF EXISTS documents_fts_delete;")
+        cur.execute("DROP TRIGGER IF EXISTS chunks_fts_insert;")
+        cur.execute("DROP TRIGGER IF EXISTS chunks_fts_update;")
+        cur.execute("DROP TRIGGER IF EXISTS chunks_fts_delete;")
+
         # 의도적으로 updated_at 자동 갱신 트리거는 생성하지 않음
         # (AFTER UPDATE에서 documents를 다시 UPDATE하면 재귀 유발 가능성)
 
@@ -247,6 +262,39 @@ class DatabaseManager:
             BEGIN
                 INSERT INTO documents_fts(documents_fts, rowid, title, content, keywords)
                 VALUES ('delete', old.id, old.content, old.keywords);
+            END;
+        """)
+
+        # INSERT 시 FTS5 인덱스에 청크 내용 추가
+        cur.execute("""
+            CREATE TRIGGER chunks_fts_insert
+            AFTER INSERT ON chunks
+            BEGIN
+                INSERT INTO chunks_fts(rowid, content)
+                VALUES (new.id, new.content);
+            END;
+        """)
+
+        # UPDATE 시 FTS5 인덱스 재색인
+        cur.execute("""
+            CREATE TRIGGER chunks_fts_update
+            AFTER UPDATE ON chunks
+            BEGIN
+                INSERT INTO chunks_fts(chunks_fts, rowid, content)
+                VALUES ('delete', old.id, old.content);
+
+                INSERT INTO chunks_fts(rowid, content)
+                VALUES (new.id, new.content);
+            END;
+        """)
+
+        # DELETE 시 FTS5 인덱스에서 청크 내용 제거
+        cur.execute("""
+            CREATE TRIGGER chunks_fts_delete
+            AFTER DELETE ON chunks
+            BEGIN
+                INSERT INTO chunks_fts(chunks_fts, rowid, content)
+                VALUES ('delete', old.id, old.content);
             END;
         """)
 
