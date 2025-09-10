@@ -371,3 +371,11 @@ BANKING_OCR_CONFIG = {
     'table_confidence_threshold': 0.6,  # 은행 문서는 테이블이 많으므로 임계치 낮춤
     'min_table_area': 500,  # 작은 표도 감지
 }
+
+
+def create_parser(parser_type: str = 'smart_ocr', config: Optional[Dict] = None) -> BaseFileParser:
+    """파서 인스턴스 생성 팩토리 함수"""
+    if parser_type == 'smart_ocr':
+        return SmartOCRImageParser(config)
+    else:
+        raise ValueError(f"Unknown parser type: {parser_type}")

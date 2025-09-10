@@ -5,7 +5,105 @@
 - 답변 구조화 개선
 """
 import re
-from typing import List, Dict, Any, Tuple
+from enum import Enum
+from typing import List, Dict, Any, Tuple, NamedTuple
+
+
+class AnswerStyle(Enum):
+    """답변 스타일 타입"""
+    EXECUTIVE = "executive"
+    SIMPLE = "simple"
+    DETAILED = "detailed"
+    FORMAL = "formal"
+
+
+class StyledAnswer(NamedTuple):
+    """스타일이 적용된 답변"""
+    styled_answer: str
+    original_answer: str
+    style: AnswerStyle
+
+
+class AnswerStyleAdjuster:
+    """답변 스타일 조정 클래스"""
+    
+    def __init__(self):
+        pass
+    
+    def adjust_answer_style(self, text: str, style: AnswerStyle) -> StyledAnswer:
+        """텍스트를 지정된 스타일로 조정"""
+        if style == AnswerStyle.EXECUTIVE:
+            styled_text = self._make_executive_style(text)
+        elif style == AnswerStyle.SIMPLE:
+            styled_text = self._make_simple_style(text)
+        elif style == AnswerStyle.DETAILED:
+            styled_text = self._make_detailed_style(text)
+        elif style == AnswerStyle.FORMAL:
+            styled_text = self._make_formal_style(text)
+        else:
+            styled_text = text
+            
+        return StyledAnswer(
+            styled_answer=styled_text,
+            original_answer=text,
+            style=style
+        )
+    
+    def _make_executive_style(self, text: str) -> str:
+        """임원진용 간결한 스타일"""
+        lines = text.split('\n')
+        summary_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            # 핵심 포인트만 추출하여 불릿 포인트로 구성
+            if len(line) > 100:
+                # 긴 문장은 요약
+                sentences = line.split('.')
+                if sentences:
+                    summary_lines.append(f"• {sentences[0].strip()}.")
+            else:
+                summary_lines.append(f"• {line}")
+        
+        return '\n'.join(summary_lines[:5])  # 최대 5개 포인트
+    
+    def _make_simple_style(self, text: str) -> str:
+        """단순하고 이해하기 쉬운 스타일"""
+        # 복잡한 문장을 단순화
+        simplified = re.sub(r'[,;:]', '.', text)
+        simplified = re.sub(r'\.+', '.', simplified)
+        
+        # 짧은 문장으로 분리
+        sentences = simplified.split('.')
+        simple_sentences = []
+        
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence and len(sentence) > 10:
+                # 긴 문장은 분리
+                if len(sentence) > 50:
+                    simple_sentences.append(sentence[:50] + "...")
+                else:
+                    simple_sentences.append(sentence + ".")
+        
+        return '\n'.join(simple_sentences)
+    
+    def _make_detailed_style(self, text: str) -> str:
+        """상세한 설명 스타일"""
+        # 기존 텍스트에 추가 설명 구조 추가
+        detailed = f"자세한 설명:\n\n{text}\n\n추가 정보:\n이 내용은 관련 문서를 기반으로 작성되었습니다."
+        return detailed
+    
+    def _make_formal_style(self, text: str) -> str:
+        """공식적이고 격식있는 스타일"""
+        # 격식있는 표현으로 변환
+        formal = text.replace("합니다", "입니다")
+        formal = formal.replace("해요", "합니다")
+        formal = formal.replace("이에요", "입니다")
+        
+        return f"다음과 같이 안내드립니다:\n\n{formal}\n\n이상으로 안내를 마치겠습니다."
 
 
 def validate_and_fix_citations(answer: str, citations: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]]]:

@@ -162,7 +162,7 @@ class DatabaseManager:
                     response_time_ms INTEGER, -- 응답 시간 (밀리초)
                     success BOOLEAN DEFAULT TRUE, -- 쿼리 성공 여부
                     error_message TEXT, -- 오류 메시지 (실패 시)
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (session_id) REFERENCES user_sessions(session_id)
                 );
             """)

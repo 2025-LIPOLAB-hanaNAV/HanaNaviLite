@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Depends, BackgroundTasks
+from pydantic import BaseModel
 from app.core.database import get_db_manager
 from app.llm.llm_judge import LLMJudge, get_llm_judge
 import structlog
@@ -19,7 +20,7 @@ os.makedirs(EVAL_DATA_DIR, exist_ok=True)
 router = APIRouter()
 
 
-class EvaluationRunResult(Dict):
+class EvaluationRunResult(BaseModel):
     """단일 평가 실행 결과"""
     evaluation_id: str
     status: str

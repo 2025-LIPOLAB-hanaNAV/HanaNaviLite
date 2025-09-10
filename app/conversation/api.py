@@ -6,7 +6,7 @@
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 import logging
 
@@ -463,9 +463,9 @@ async def extend_session(session_id: str, additional_hours: int = 24):
 @conversation_router.post("/sessions/{session_id}/feedback")
 async def submit_feedback(
     session_id: str,
-    turn_number: int,
-    rating: int = Field(..., ge=1, le=5),
-    comment: Optional[str] = None
+    turn_number: int = Query(...),
+    rating: int = Query(..., ge=1, le=5),
+    comment: Optional[str] = Query(None)
 ):
     """턴별 피드백 제출"""
     try:
