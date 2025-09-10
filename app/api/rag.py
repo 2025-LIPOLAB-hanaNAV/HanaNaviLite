@@ -17,14 +17,19 @@ class QueryRequest(BaseModel):
 
 @router.post("/rag/query")
 async def rag_query(
-    request: QueryRequest,
+    request: QueryRequest | None = None,
+    query: str | None = Query(None),
     pipeline: RAGPipeline = Depends(get_rag_pipeline)
 ) -> Dict[str, Any]:
     """
     RAG 파이프라인을 통해 사용자 질문에 답변합니다 (스트리밍 미사용).
     """
     try:
-        result = await pipeline.query(request.query)
+        final_query = query or (request.query if request else None)
+        if not final_query:
+            raise HTTPException(status_code=422, detail="query required")
+
+        result = await pipeline.query(final_query)
         return result
     except Exception as e:
         logger.error(f"RAG query failed: {e}", exc_info=True)

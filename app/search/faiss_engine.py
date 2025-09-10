@@ -36,33 +36,56 @@ class FAISSVectorEngine:
         self.reverse_mapping: Dict[str, int] = {}  # chunk_id -> faiss_id
         self.metadata_cache: Dict[str, Dict[str, Any]] = {}
         self.is_loaded = False
-        
+
         # 메모리 최적화 설정
         self.max_cache_size = 10000  # 최대 캐시 항목 수
         self.enable_gpu = faiss.get_num_gpus() > 0
-        
+
+        # IVF 설정
+        self.ivf_threshold = settings.faiss_ivf_threshold
+        self.use_ivfpq = settings.faiss_ivf_use_pq
+        self.ivf_nlist = settings.faiss_ivf_nlist
+        self.ivfpq_m = settings.faiss_ivfpq_m
+
         logger.info(f"FAISS Engine initialized - Dimension: {self.dimension}, GPU: {self.enable_gpu}")
     
     def _ensure_index_directory(self):
         """인덱스 디렉토리 생성"""
         os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
     
-    def _create_index(self) -> faiss.Index:
+    def _create_index(self, use_ivf: bool = False, nlist: Optional[int] = None,
+                      pq_m: Optional[int] = None, pq_nbits: int = 8,
+                      to_gpu: bool = True, use_pq: Optional[bool] = None) -> faiss.Index:
         """
         FAISS 인덱스 생성
-        메모리 최적화를 위해 IndexFlatIP 사용 (Inner Product)
+        use_ivf가 True이면 IVF 기반 인덱스를 생성한다.
         """
-        if self.enable_gpu and self.dimension <= 2048:
-            # GPU 사용 가능하고 차원이 적당한 경우
+        nlist = nlist or self.ivf_nlist
+        use_pq = self.use_ivfpq if use_pq is None else use_pq
+
+        if use_ivf:
+            quantizer = faiss.IndexFlatIP(self.dimension)
+            if use_pq:
+                pq_m = pq_m or self.ivfpq_m
+                index = faiss.IndexIVFPQ(
+                    quantizer, self.dimension, nlist, pq_m, pq_nbits, faiss.METRIC_INNER_PRODUCT
+                )
+            else:
+                index = faiss.IndexIVFFlat(
+                    quantizer, self.dimension, nlist, faiss.METRIC_INNER_PRODUCT
+                )
+            logger.info(
+                f"Created {'IVFPQ' if use_pq else 'IVFFlat'} index with nlist={nlist}"
+            )
+        else:
             index = faiss.IndexFlatIP(self.dimension)
+            logger.info("Created Flat index")
+
+        if self.enable_gpu and self.dimension <= 2048 and to_gpu:
             gpu_res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(gpu_res, 0, index)
-            logger.info("Created GPU-accelerated FAISS index")
-        else:
-            # CPU 인덱스 사용
-            index = faiss.IndexFlatIP(self.dimension)
-            logger.info("Created CPU FAISS index")
-        
+            logger.info("Moved index to GPU")
+
         return index
     
     def load_index(self) -> bool:
@@ -79,6 +102,9 @@ class FAISSVectorEngine:
             
             # 인덱스 파일 로드
             self.index = faiss.read_index(f"{self.index_path}.faiss")
+            if self.enable_gpu and self.dimension <= 2048 and not faiss.index_is_gpu(self.index):
+                gpu_res = faiss.StandardGpuResources()
+                self.index = faiss.index_cpu_to_gpu(gpu_res, 0, self.index)
             logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors")
             
             # 메타데이터 로드
@@ -114,8 +140,11 @@ class FAISSVectorEngine:
             
             self._ensure_index_directory()
             
-            # 인덱스 저장
-            faiss.write_index(self.index, f"{self.index_path}.faiss")
+            # 인덱스 저장 (GPU 인덱스는 CPU로 변환 후 저장)
+            index_to_save = self.index
+            if faiss.index_is_gpu(self.index):
+                index_to_save = faiss.index_gpu_to_cpu(self.index)
+            faiss.write_index(index_to_save, f"{self.index_path}.faiss")
             
             # 메타데이터 저장
             metadata = {
@@ -129,12 +158,59 @@ class FAISSVectorEngine:
             
             logger.info(f"Saved FAISS index with {self.index.ntotal} vectors")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save FAISS index: {e}")
             return False
-    
-    def add_vectors(self, chunk_ids: List[str], vectors: np.ndarray, 
+
+    def rebuild_index(self, use_pq: Optional[bool] = None, nlist: Optional[int] = None,
+                      pq_m: Optional[int] = None, pq_nbits: int = 8) -> bool:
+        """현재 벡터들로 IVF 인덱스를 재구축"""
+        try:
+            if self.index is None or self.index.ntotal == 0:
+                logger.warning("No vectors to rebuild")
+                return False
+
+            # 기존 벡터 및 메타데이터 수집
+            vectors = []
+            chunk_ids = []
+            metadata = []
+            for i in range(self.index.ntotal):
+                vectors.append(self.index.reconstruct(i))
+                cid = self.id_mapping.get(i)
+                chunk_ids.append(cid)
+                metadata.append(self.metadata_cache.get(cid))
+
+            vectors_array = np.array(vectors, dtype=np.float32)
+            faiss.normalize_L2(vectors_array)
+
+            nlist = nlist or int(np.sqrt(len(vectors_array))) or 1
+
+            new_index = self._create_index(
+                use_ivf=True, nlist=nlist, pq_m=pq_m, pq_nbits=pq_nbits,
+                to_gpu=False, use_pq=use_pq
+            )
+            new_index.train(vectors_array)
+            if self.enable_gpu and self.dimension <= 2048:
+                gpu_res = faiss.StandardGpuResources()
+                new_index = faiss.index_cpu_to_gpu(gpu_res, 0, new_index)
+            new_index.add(vectors_array)
+
+            # 매핑 재구성
+            self.index = new_index
+            self.id_mapping = {i: cid for i, cid in enumerate(chunk_ids)}
+            self.reverse_mapping = {cid: i for i, cid in enumerate(chunk_ids)}
+            self.metadata_cache = {cid: md for cid, md in zip(chunk_ids, metadata)}
+
+            gc.collect()
+            logger.info("Rebuilt FAISS index using IVF")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to rebuild index: {e}")
+            return False
+
+    def add_vectors(self, chunk_ids: List[str], vectors: np.ndarray,
                    metadata: Optional[List[Dict[str, Any]]] = None) -> bool:
         """
         벡터 추가
@@ -153,10 +229,14 @@ class FAISSVectorEngine:
             # L2 정규화 (코사인 유사도를 위해)
             vectors = vectors.astype(np.float32)
             faiss.normalize_L2(vectors)
-            
+
             # 시작 인덱스
             start_idx = self.index.ntotal
-            
+
+            # 필요 시 훈련 수행
+            if isinstance(self.index, faiss.IndexIVF) and not self.index.is_trained:
+                self.index.train(vectors)
+
             # 벡터 추가
             self.index.add(vectors)
             
@@ -176,7 +256,15 @@ class FAISSVectorEngine:
             
             # 메모리 사용량 체크
             self._check_memory_usage()
-            
+
+            # IVF 인덱스로 전환 조건 확인
+            total_vectors = self.index.ntotal
+            if total_vectors > self.ivf_threshold and not isinstance(self.index, faiss.IndexIVF):
+                logger.info(
+                    f"Vector count {total_vectors} exceeded threshold {self.ivf_threshold}, rebuilding index"
+                )
+                self.rebuild_index()
+
             logger.info(f"Added {len(chunk_ids)} vectors to FAISS index")
             return True
             

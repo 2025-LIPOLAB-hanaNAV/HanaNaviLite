@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # FAISS (벡터 검색 엔진) 설정
     faiss_dimension: int = 1024 # FAISS 인덱스의 벡터 차원 (snowflake-arctic-embed-l은 1024차원)
     faiss_index_path: str = "models/faiss_index" # FAISS 인덱스 파일 저장 경로
+    faiss_ivf_threshold: int = 50000 # IVF 인덱스로 전환할 벡터 수 임계값
+    faiss_ivf_use_pq: bool = False # True면 IndexIVFPQ, False면 IndexIVFFlat 사용
+    faiss_ivf_nlist: int = 100 # IVF 인덱스 클러스터 수
+    faiss_ivfpq_m: int = 16 # IVFPQ 시 서브벡터 수
     
     # LLM (대규모 언어 모델) 설정
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11435") # Ollama 서버의 기본 URL
