@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # 임베딩 (텍스트를 벡터로 변환) 설정
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "dragonkue/snowflake-arctic-embed-l-v2.0-ko") # 사용할 임베딩 모델 이름
     embedding_batch_size: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "32")) # 임베딩 처리 시 배치 크기
+    embedding_cache_size: int = int(os.getenv("EMBEDDING_CACHE_SIZE", "1024")) # 임베딩 캐시 최대 크기
     
     # 검색 엔진 설정 (하이브리드 검색)
     hybrid_search_top_k: int = 20 # 하이브리드 검색 결과의 최대 개수
