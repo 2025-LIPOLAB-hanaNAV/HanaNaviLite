@@ -30,7 +30,8 @@ from app.conversation.context_search import (
 from app.conversation.dialog_state import (
     DialogStateManager,
     DialogState,
-    TopicDetector
+    TopicDetector,
+    AgentStateDecider
 )
 
 
@@ -488,6 +489,25 @@ class TestDialogState(unittest.TestCase):
             3
         )
         self.assertEqual(updated_context.current_state, DialogState.ACTIVE)
+
+    def test_agent_state_decider_overrides(self):
+        """AgentStateDecider 예측이 규칙을 대체하는지 테스트"""
+
+        class MockDecider(AgentStateDecider):
+            def predict_state(self, context, message):
+                return DialogState.ERROR, 0.9
+
+        with patch('app.conversation.dialog_state.get_session_manager') as mock_get_session:
+            mock_get_session.return_value = self.mock_session_manager
+            dialog_manager = DialogStateManager(state_decider=MockDecider())
+
+        context = dialog_manager.initialize_session_state("test_session")
+        updated_context = dialog_manager.process_user_message(
+            "test_session",
+            "예금 상품을 알고 싶어요",
+            1
+        )
+        self.assertEqual(updated_context.current_state, DialogState.ERROR)
 
 
 class TestConversationIntegration(unittest.TestCase):
