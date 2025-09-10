@@ -23,7 +23,8 @@ class HybridSearchResult:
     vector_score: float
     ir_score: float
     fusion_score: float
-    rank: int
+    rerank_score: float = 0.0
+    rank: int = 0
     metadata: Optional[Dict[str, Any]] = None
     source_types: List[str] = None  # ['vector', 'ir'] 등
 
@@ -109,6 +110,7 @@ class RRFAlgorithm:
                 vector_score=vector_score,
                 ir_score=ir_score,
                 fusion_score=fusion_score,
+                rerank_score=fusion_score,
                 rank=0,  # 나중에 설정
                 metadata=metadata,
                 source_types=source_types
@@ -258,6 +260,7 @@ class RRFAlgorithm:
                 vector_score=vector_score,
                 ir_score=ir_score,
                 fusion_score=fusion_score,
+                rerank_score=fusion_score,
                 rank=0,
                 metadata=metadata,
                 source_types=source_types
@@ -311,6 +314,7 @@ class RRFAlgorithm:
                 vector_score=result.vector_score,
                 ir_score=result.ir_score,
                 fusion_score=boosted_score,
+                rerank_score=boosted_score,
                 rank=0,  # 재설정됨
                 metadata=result.metadata,
                 source_types=result.source_types
