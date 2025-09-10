@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# 시스템 패키지 설치
+# 시스템 패키지 설치 (백엔드 API용 최소화)
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -18,8 +18,6 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-kor \
     tesseract-ocr-eng \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 작업 디렉터리 설정

@@ -13,7 +13,7 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434  # 로컬 Ollama 사용시
+      - OLLAMA_BASE_URL=http://host.docker.internal:11435  # 로컬 Ollama 사용시 (현재 11435 포트)
       # - OLLAMA_BASE_URL=http://ollama:11434  # Ollama 컨테이너 사용시
       - EMBEDDING_MODEL=dragonkue/snowflake-arctic-embed-l-v2.0-ko
       - LLM_MODEL=gemma3:12b-it-qat
