@@ -126,33 +126,33 @@ class SQLiteFTS5Engine:
         cache_str = json.dumps(cache_data, sort_keys=True)
         return hashlib.md5(cache_str.encode()).hexdigest()
     
-    def _get_cached_results(self, cache_key: str) -> Optional[List[IRSearchResult]]:
+    def _get_cached_results(self, cache_key: str, search_type: str = 'ir') -> Optional[List[IRSearchResult]]:
         """캐시된 검색 결과 조회"""
         if not self.cache_enabled:
             return None
-        
+
         try:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT results_json, hit_count 
-                    FROM search_cache 
-                    WHERE query_hash = ? AND search_type = 'ir'
-                """, (cache_key,))
-                
+                    SELECT results_json, hit_count
+                    FROM search_cache
+                    WHERE query_hash = ? AND search_type = ?
+                """, (cache_key, search_type))
+
                 result = cursor.fetchone()
                 if not result:
                     return None
-                
+
                 results_json, hit_count = result
-                
+
                 # 히트 카운트 업데이트
                 cursor.execute("""
-                    UPDATE search_cache 
+                    UPDATE search_cache
                     SET hit_count = ?, last_accessed = CURRENT_TIMESTAMP
-                    WHERE query_hash = ?
-                """, (hit_count + 1, cache_key))
-                
+                    WHERE query_hash = ? AND search_type = ?
+                """, (hit_count + 1, cache_key, search_type))
+
                 # JSON 결과를 객체로 변환
                 results_data = json.loads(results_json)
                 return [
@@ -167,16 +167,16 @@ class SQLiteFTS5Engine:
                     )
                     for r in results_data
                 ]
-                
+
         except Exception as e:
             logger.error(f"Failed to get cached results: {e}")
             return None
-    
-    def _cache_results(self, cache_key: str, query: str, results: List[IRSearchResult]):
+
+    def _cache_results(self, cache_key: str, query: str, results: List[IRSearchResult], search_type: str = 'ir'):
         """검색 결과 캐시 저장"""
         if not self.cache_enabled:
             return
-        
+
         try:
             # 결과를 JSON으로 직렬화
             results_data = [
@@ -192,15 +192,15 @@ class SQLiteFTS5Engine:
                 for r in results
             ]
             results_json = json.dumps(results_data, ensure_ascii=False)
-            
+
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT OR REPLACE INTO search_cache 
+                    INSERT OR REPLACE INTO search_cache
                     (query_hash, query_text, search_type, results_json, hit_count, last_accessed)
-                    VALUES (?, ?, 'ir', ?, 0, CURRENT_TIMESTAMP)
-                """, (cache_key, query, results_json))
-                
+                    VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+                """, (cache_key, query, search_type, results_json))
+
         except Exception as e:
             logger.error(f"Failed to cache results: {e}")
     
@@ -253,7 +253,7 @@ class SQLiteFTS5Engine:
             
             # 캐시 확인
             cache_key = self._get_query_cache_key(query, top_k, search_mode, filters)
-            cached_results = self._get_cached_results(cache_key)
+            cached_results = self._get_cached_results(cache_key, 'ir')
             if cached_results is not None:
                 logger.info(f"Returned cached IR search results for query: {query}")
                 return cached_results[:top_k]
@@ -349,7 +349,7 @@ class SQLiteFTS5Engine:
             final_results = results[:top_k]
             
             # 캐시 저장
-            self._cache_results(cache_key, query, final_results)
+            self._cache_results(cache_key, query, final_results, 'ir')
             
             logger.info(f"IR search returned {len(final_results)} results for query: {query}")
             return final_results
@@ -359,13 +359,92 @@ class SQLiteFTS5Engine:
             return []
     
     def search_chunks(self, query: str, top_k: int = 20) -> List[IRSearchResult]:
-        """
-        청크 단위 검색 (향후 확장용)
-        현재는 문서 단위 검색만 지원
-        """
-        # TODO: 청크 테이블에 FTS5 인덱스 추가 시 구현
-        logger.warning("Chunk-level FTS5 search not implemented yet")
-        return self.search(query, top_k)
+        """청크 단위 FTS5 검색"""
+        try:
+            if not query or not query.strip():
+                return []
+
+            cache_key = self._get_query_cache_key(query, top_k, 'AUTO', None)
+            cached_results = self._get_cached_results(cache_key, 'ir_chunk')
+            if cached_results is not None:
+                logger.info(f"Returned cached chunk search results for query: {query}")
+                return cached_results[:top_k]
+
+            fts_query = self._build_fts_query(query, 'AUTO')
+            if not fts_query:
+                return []
+
+            sql_query = """
+                SELECT
+                    c.id as chunk_id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    d.title,
+                    d.keywords,
+                    d.file_name,
+                    d.file_type,
+                    fts.rank as score
+                FROM chunks_fts fts
+                JOIN chunks c ON c.id = fts.rowid
+                JOIN documents d ON d.id = c.document_id
+                WHERE chunks_fts MATCH ?
+                ORDER BY fts.rank LIMIT ?
+            """
+
+            params = [fts_query, top_k * 2]
+
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql_query, params)
+                rows = cursor.fetchall()
+
+            results = []
+            for row in rows:
+                chunk_id = row[0]
+                document_id = row[1]
+                chunk_index = row[2]
+                content = row[3] or ""
+                title = row[4] or ""
+                keywords = row[5] or ""
+                file_name = row[6] or ""
+                file_type = row[7] or ""
+                score = abs(float(row[8]))
+
+                snippet = self._generate_snippet(content, query)
+                metadata = {
+                    'file_name': file_name,
+                    'file_type': file_type,
+                    'keywords': keywords,
+                    'chunk_index': chunk_index
+                }
+
+                results.append(IRSearchResult(
+                    chunk_id=f"chunk_{chunk_id}",
+                    document_id=document_id,
+                    score=score,
+                    title=title,
+                    content=content,
+                    snippet=snippet,
+                    metadata=metadata
+                ))
+
+            if results:
+                max_score = max(r.score for r in results)
+                if max_score > 0:
+                    for r in results:
+                        r.score = r.score / max_score
+
+            final_results = results[:top_k]
+
+            self._cache_results(cache_key, query, final_results, 'ir_chunk')
+
+            logger.info(f"IR chunk search returned {len(final_results)} results for query: {query}")
+            return final_results
+
+        except Exception as e:
+            logger.error(f"IR chunk search failed for query '{query}': {e}")
+            return []
     
     def get_similar_documents(self, document_id: int, top_k: int = 10) -> List[IRSearchResult]:
         """
