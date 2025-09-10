@@ -222,10 +222,25 @@ class FAISSVectorEngine:
                 
                 # 필터링 적용
                 if filter_metadata and metadata:
-                    should_include = all(
-                        metadata.get(key) == value 
-                        for key, value in filter_metadata.items()
-                    )
+                    should_include = True
+                    for key, value in filter_metadata.items():
+                        meta_val = metadata.get(key)
+                        if isinstance(value, list):
+                            if not meta_val:
+                                should_include = False
+                                break
+                            if isinstance(meta_val, list):
+                                if not any(v in meta_val for v in value):
+                                    should_include = False
+                                    break
+                            else:
+                                if meta_val not in value:
+                                    should_include = False
+                                    break
+                        else:
+                            if meta_val != value:
+                                should_include = False
+                                break
                     if not should_include:
                         continue
                 

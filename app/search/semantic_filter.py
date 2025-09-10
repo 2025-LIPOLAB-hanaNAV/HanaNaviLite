@@ -6,13 +6,55 @@ Phase 2 고급 검색 기능 - 문서 자동 분류 및 의미적 필터링
 
 import re
 import logging
+import json
+import asyncio
 from typing import Dict, List, Set, Optional, Any, Tuple
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import sqlite3
 
+from app.llm.ollama_client import get_ollama_client
+
 logger = logging.getLogger(__name__)
+
+
+class LLMDocumentTagger:
+    """LLM 기반 문서 태깅 도구"""
+
+    def __init__(self):
+        self.client = get_ollama_client()
+
+    async def _atag(self, title: str, content: str) -> Dict[str, Any]:
+        """LLM을 사용하여 태그와 카테고리를 제안"""
+        prompt = (
+            "다음 문서의 제목과 내용을 기반으로 간단한 태그와 카테고리를 제안해 주세요.\n"
+            "결과는 JSON 형식으로 반환하고, 'tags' (짧은 태그 리스트), 'categories' (카테고리 리스트), "
+            "'reasoning' (간단한 근거) 필드를 포함해 주세요.\n"
+            f"제목: {title}\n내용: {content[:1000]}"
+        )
+        response = await self.client.generate(prompt)
+        text = response.get("response", "")
+        try:
+            data = json.loads(text)
+            if not isinstance(data, dict):
+                raise ValueError("Invalid JSON")
+            tags = data.get("tags", [])
+            categories = data.get("categories", [])
+            reasoning = data.get("reasoning", "")
+        except Exception:
+            tags = []
+            categories = []
+            reasoning = text.strip()
+        return {"tags": tags, "categories": categories, "reasoning": reasoning}
+
+    def tag_document(self, title: str, content: str) -> Dict[str, Any]:
+        """동기식 태그 제안 함수"""
+        try:
+            return asyncio.run(self._atag(title, content))
+        except Exception as e:
+            logger.error(f"LLM tagging failed: {e}")
+            return {"tags": [], "categories": [], "reasoning": f"tagging failed: {e}"}
 
 
 class DocumentCategory(Enum):

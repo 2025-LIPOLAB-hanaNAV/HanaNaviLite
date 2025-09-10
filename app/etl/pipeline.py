@@ -1,6 +1,7 @@
 import logging
 import os
 import hashlib
+import json
 from typing import Dict, Any, Optional
 
 from app.core.database import get_db_manager
@@ -11,6 +12,7 @@ from app.parser.image_ocr_parser import SmartOCRImageParser, create_parser as cr
 from app.utils.text_processor import get_text_processor
 from app.llm.embedding import get_embedding_manager
 from app.search.faiss_engine import get_faiss_engine
+from app.search.semantic_filter import LLMDocumentTagger
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class ETLPipeline:
         self.text_processor = get_text_processor()
         self.embedding_manager = get_embedding_manager()
         self.faiss_engine = get_faiss_engine()
+        self.tagger = LLMDocumentTagger()
         self.parsers = {
             ".pdf": parse_pdf,
             ".docx": parse_docx,
@@ -107,7 +110,10 @@ class ETLPipeline:
             parser = self.parsers[file_ext]
             full_text = "\n".join(parser(file_path))
 
-            # 3) 텍스트 청킹
+            # 3) LLM을 통한 태그 추출
+            tag_result = self.tagger.tag_document(file_name, full_text)
+            tags_json = json.dumps(tag_result, ensure_ascii=False)
+            # 4) 텍스트 청킹
             logger.info(f"Chunking text for document ID: {document_id}")
             chunks = self.text_processor.chunk_text(full_text, chunk_size=1000, overlap=100)
 
@@ -131,7 +137,7 @@ class ETLPipeline:
                     "message": "No content to chunk",
                 }
 
-            # 4) 임베딩 계산 및 청크 저장
+            # 5) 임베딩 계산 및 청크 저장
             logger.info(f"Generating embeddings for {len(chunks)} chunks...")
             chunk_contents = [c["content"] for c in chunks]
             embeddings = self.embedding_manager.get_embeddings(chunk_contents)
@@ -159,18 +165,19 @@ class ETLPipeline:
                     """
                     UPDATE documents
                        SET content      = ?,
+                           tags_json    = ?,
                            status       = 'processed',
                            processed_at = CURRENT_TIMESTAMP,
                            updated_at   = CURRENT_TIMESTAMP
                      WHERE id = ?
                     """,
-                    (full_text, document_id),
+                    (full_text, tags_json, document_id),
                 )
                 # NOTE: documents_fts는 트리거가 자동 동기화하므로 수동 INSERT/UPDATE 불필요
 
             # 5) FAISS 인덱스에 벡터 추가
             logger.info(f"Adding {len(embeddings)} vectors to FAISS index...")
-            metadata = [{"document_id": document_id, "chunk_index": i} for i in range(len(chunks))]
+            metadata = [{"document_id": document_id, "chunk_index": i, "tags": tag_result.get("tags", [])} for i in range(len(chunks))]
             self.faiss_engine.add_vectors(chunk_ids, embeddings, metadata)
             self.faiss_engine.save_index()
 

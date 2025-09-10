@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 import json
 
@@ -17,14 +17,19 @@ class QueryRequest(BaseModel):
 
 @router.post("/rag/query")
 async def rag_query(
-    request: QueryRequest,
+    request: Optional[QueryRequest] = None,
+    query: Optional[str] = Query(default=None),
     pipeline: RAGPipeline = Depends(get_rag_pipeline)
 ) -> Dict[str, Any]:
     """
     RAG 파이프라인을 통해 사용자 질문에 답변합니다 (스트리밍 미사용).
+    본문 또는 쿼리 파라미터로 질의를 받을 수 있습니다.
     """
+    final_query = request.query if request else query
+    if not final_query:
+        raise HTTPException(status_code=422, detail="query is required")
     try:
-        result = await pipeline.query(request.query)
+        result = await pipeline.query(final_query)
         return result
     except Exception as e:
         logger.error(f"RAG query failed: {e}", exc_info=True)

@@ -272,6 +272,7 @@ class SQLiteFTS5Engine:
                     d.keywords,
                     d.file_name,
                     d.file_type,
+                    d.tags_json,
                     fts.rank as score
                 FROM documents_fts fts
                 JOIN documents d ON d.id = fts.rowid
@@ -293,6 +294,11 @@ class SQLiteFTS5Engine:
                 if 'date_to' in filters:
                     sql_query += " AND d.created_at <= ?"
                     params.append(filters['date_to'])
+
+                if 'tags' in filters:
+                    for tag in filters['tags']:
+                        sql_query += " AND d.tags_json LIKE ?"
+                        params.append(f'%"{tag}"%')
             
             # 정렬 및 제한
             sql_query += " ORDER BY fts.rank LIMIT ?"
@@ -313,16 +319,23 @@ class SQLiteFTS5Engine:
                 keywords = row[3] or ""
                 file_name = row[4] or ""
                 file_type = row[5] or ""
-                score = abs(float(row[6]))  # FTS5 rank는 음수이므로 절댓값
+                tags_json = row[6] or ""
+                score = abs(float(row[7]))  # FTS5 rank는 음수이므로 절댓값
                 
                 # 스니펫 생성
                 snippet = self._generate_snippet(content, query)
                 
                 # 메타데이터 구성
+                try:
+                    tags_data = json.loads(tags_json) if tags_json else []
+                except Exception:
+                    tags_data = []
+
                 metadata = {
                     'file_name': file_name,
                     'file_type': file_type,
-                    'keywords': keywords
+                    'keywords': keywords,
+                    'tags': tags_data.get('tags') if isinstance(tags_data, dict) else tags_data
                 }
                 
                 # chunk_id 생성 (문서 단위 검색이므로 document_id 사용)

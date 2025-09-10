@@ -32,6 +32,7 @@ class HybridSearchEngine:
         - 쿼리 정규화
         - IR, Vector 병렬 검색
         - RRF 융합
+        - 태그 기반 필터링
         """
         try:
             # 1. 쿼리 정규화 및 임베딩 생성
@@ -43,9 +44,9 @@ class HybridSearchEngine:
             vector_task = asyncio.to_thread(self.vector_engine.search, query_embedding, top_k * 2, filter_metadata=filters)
             
             ir_results, vector_results = await asyncio.gather(ir_task, vector_task)
-            
+
             logger.info(f"IR search found {len(ir_results)} results, Vector search found {len(vector_results)} results")
-            
+
             # 3. RRF 융합
             # Get current weights from PerformanceTuner
             weights = self.performance_tuner.get_search_weights()
@@ -56,11 +57,19 @@ class HybridSearchEngine:
                 vector_weight=weights["vector_weight"],
                 ir_weight=weights["ir_weight"]
             )
-            
-            # 4. (선택적) 다양성 필터링
+
+            # 4. 태그 필터링
+            tag_filters = filters.get("tags") if filters else None
+            if tag_filters:
+                fused_results = [
+                    r for r in fused_results
+                    if r.metadata and any(tag in (r.metadata.get("tags") or []) for tag in tag_filters)
+                ]
+
+            # 5. (선택적) 다양성 필터링
             # final_results = self.rrf_algorithm.get_diversity_filtered_results(fused_results)
             final_results = fused_results
-            
+
             logger.info(f"Hybrid search completed with {len(final_results)} results for query: '{query}'")
             return final_results
             
