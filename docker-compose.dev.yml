@@ -1,0 +1,33 @@
+version: '3.8'
+
+# 개발 환경용 Docker Compose 오버라이드
+services:
+  hananavilite:
+    volumes:
+      # 코드 핫 리로딩을 위해 소스 코드 마운트
+      - ./app:/app/app
+      - ./ui:/app/ui
+    environment:
+      - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+    command: ["python", "-m", "app.main", "--reload"]
+    
+  # 개발용 PostgreSQL (SQLite 대신 사용 가능)
+  postgres:
+    image: postgres:15-alpine
+    container_name: hananavilite-postgres-dev
+    environment:
+      - POSTGRES_DB=hananavilite_dev
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - hananavilite-network
+    profiles:
+      - postgres
+
+volumes:
+  postgres_dev_data:

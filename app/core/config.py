@@ -10,18 +10,18 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///data/hananavilite.db"
     
     # FAISS (벡터 검색 엔진) 설정
-    faiss_dimension: int = 1024 # FAISS 인덱스의 벡터 차원
+    faiss_dimension: int = 1024 # FAISS 인덱스의 벡터 차원 (snowflake-arctic-embed-l은 1024차원)
     faiss_index_path: str = "models/faiss_index" # FAISS 인덱스 파일 저장 경로
     
     # LLM (대규모 언어 모델) 설정
-    ollama_base_url: str = "http://localhost:11435" # Ollama 서버의 기본 URL
-    llm_model: str = "gemma3:12b-it-qat" # 사용할 LLM 모델 이름
-    llm_max_tokens: int = 2048 # LLM 응답의 최대 토큰 수
-    llm_temperature: float = 0.1 # LLM 응답의 다양성 (창의성) 제어 (0.0 ~ 1.0)
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434") # Ollama 서버의 기본 URL
+    llm_model: str = os.getenv("LLM_MODEL", "gemma3:12b-it-qat") # 사용할 LLM 모델 이름
+    llm_max_tokens: int = int(os.getenv("LLM_MAX_TOKENS", "2048")) # LLM 응답의 최대 토큰 수
+    llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.1")) # LLM 응답의 다양성 (창의성) 제어 (0.0 ~ 1.0)
     
     # 임베딩 (텍스트를 벡터로 변환) 설정
-    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" # 사용할 임베딩 모델 이름
-    embedding_batch_size: int = 32 # 임베딩 처리 시 배치 크기
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "dragonkue/snowflake-arctic-embed-l-v2.0-ko") # 사용할 임베딩 모델 이름
+    embedding_batch_size: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "32")) # 임베딩 처리 시 배치 크기
     
     # 검색 엔진 설정 (하이브리드 검색)
     hybrid_search_top_k: int = 20 # 하이브리드 검색 결과의 최대 개수

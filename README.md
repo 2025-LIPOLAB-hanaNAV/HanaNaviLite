@@ -93,9 +93,43 @@ curl http://localhost:11435/api/tags
 curl -X POST http://localhost:11435/api/pull -d '{"name": "gemma3:12b-it-qat"}'
 ```
 
-### **📱 챗봇 사용법**
+### ## 🐳 **Docker 실행 (컨테이너 환경)**
 
-1. **챗봇 UI 접속**: http://localhost:5174
+### **방법 1: 로컬 Ollama API 사용 (추천)**
+
+```bash
+# 1. 로컬 Ollama 서버 시작 (11434 포트)
+ollama serve
+
+# 2. 필요한 모델 다운로드
+ollama pull gemma3:12b-it-qat
+
+# 3. Docker Compose로 실행
+docker-compose up -d
+```
+
+### **방법 2: Ollama 컨테이너 포함 실행**
+
+```bash
+# GPU가 있는 환경
+docker-compose --profile ollama-container up -d
+
+# 컨테이너 내부에서 모델 다운로드
+docker exec -it hananavilite-ollama ollama pull gemma3:12b-it-qat
+```
+
+**🎯 Docker 접속 주소:**
+- **🤖 챗봇 UI**: http://localhost:80
+- **📡 API 서버**: http://localhost:8001  
+- **📚 API 문서**: http://localhost:8001/docs
+
+> **자세한 Docker 사용법은 [DOCKER_USAGE.md](./DOCKER_USAGE.md) 참고**
+
+---
+
+**📱 챗봇 사용법**
+
+1. **챗봇 UI 접속**: http://localhost:5174 (로컬) / http://localhost:80 (Docker)
 2. **문서 업로드**: 우측 사이드바에서 PDF, DOCX, XLSX 파일 업로드
 3. **질문하기**: 하단 입력창에서 문서 관련 질문 입력
 4. **실시간 답변**: RAG 기반으로 문서에서 정확한 답변 생성

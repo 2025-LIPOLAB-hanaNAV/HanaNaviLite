@@ -82,10 +82,16 @@ docker-down:
 	docker-compose down
 	@echo "✅ 시스템 종료됨!"
 
-# Ollama 모델 다운로드
+# Ollama 모델 다운로드 (컨테이너 사용시)
 pull-model:
 	@echo "🤖 Ollama 모델 다운로드 중..."
-	docker-compose exec ollama ollama pull gemma2:2b
+	docker-compose exec ollama ollama pull gemma3:12b-it-qat
+	@echo "✅ 모델 다운로드 완료!"
+
+# 로컬 Ollama 모델 다운로드
+pull-model-local:
+	@echo "🤖 로컬 Ollama 모델 다운로드 중..."
+	ollama pull gemma3:12b-it-qat
 	@echo "✅ 모델 다운로드 완료!"
 
 # 로그 모니터링
