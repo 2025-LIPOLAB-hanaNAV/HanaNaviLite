@@ -13,7 +13,7 @@ from app.etl.pipeline import ETLPipeline, get_etl_pipeline
 from app.search.faiss_engine import get_faiss_engine
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin")
 
 
 @router.post("/reindex_documents")

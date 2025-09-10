@@ -9,15 +9,12 @@ type Message = { role: 'user' | 'assistant'; content: string; citations?: Citati
 
 const ChatApp: React.FC = () => {
   const RAG_BASE = useMemo(() => {
-    // If VITE_RAG_BASE is provided, use it; otherwise detect dynamically
+    // If VITE_RAG_BASE is provided, use it; otherwise use relative path
     if (import.meta.env.VITE_RAG_BASE) {
       return import.meta.env.VITE_RAG_BASE
     }
-    // For external access, use current hostname with RAG API port
-    const currentHost = window.location.hostname
-    return currentHost === 'localhost' || currentHost === '127.0.0.1' 
-      ? 'http://localhost:8001/api/v1' 
-      : `${window.location.protocol}//${currentHost}:8001/api/v1`
+    // Use relative path to avoid CORS issues
+    return '/api/v1'
   }, [])
   
   const ETL_BASE = useMemo(() => {

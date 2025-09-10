@@ -29,7 +29,7 @@ from app.conversation.dialog_state import (
 logger = logging.getLogger(__name__)
 
 # API 라우터 생성
-conversation_router = APIRouter(prefix="/conversation", tags=["conversation"])
+conversation_router = APIRouter(prefix="/conversation")
 
 
 # Pydantic 모델 정의

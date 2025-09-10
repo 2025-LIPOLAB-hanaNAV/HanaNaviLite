@@ -12,7 +12,7 @@ type Message = {
 }
 
 const ChatApp: React.FC = () => {
-  const API_BASE = 'http://localhost:8001/api/v1'
+  const API_BASE = '/api/v1'  // 상대 경로 사용으로 CORS 문제 해결
   
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
