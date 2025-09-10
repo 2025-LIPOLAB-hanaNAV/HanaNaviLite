@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Any, Tuple
 import logging
 
 from app.core.database import get_db_manager
+from app.conversation.summary_agent import get_conversation_summarizer
 
 logger = logging.getLogger(__name__)
 
@@ -252,8 +253,18 @@ class ConversationSessionManager:
             
             turn.id = cursor.lastrowid
             conn.commit()
-        
+
         logger.info(f"Added turn {turn_number} to session {session_id}")
+
+        # Update session summary after each turn
+        try:
+            summarizer = get_conversation_summarizer()
+            summarizer.session_manager = self
+            summary = summarizer.summarize_sync(session_id)
+            if summary:
+                self.update_session_context(session_id, context_summary=summary)
+        except Exception as e:
+            logger.error(f"Failed to update session summary: {e}")
         return turn
     
     def get_session_turns(

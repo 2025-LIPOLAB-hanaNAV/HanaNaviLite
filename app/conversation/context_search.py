@@ -99,11 +99,27 @@ class ContextAwareSearchEngine:
         Returns:
             SearchContext: 개선된 검색 컨텍스트
         """
-        # 이전 대화 내용 조회
-        recent_turns = self.session_manager.get_session_turns(
-            session_id, 
-            limit=max_context_turns
+        # 세션 요약을 기반으로 컨텍스트 구성
+        session = self.session_manager.get_session(session_id)
+        summary = (
+            session.context_summary
+            if session and isinstance(getattr(session, "context_summary", None), str)
+            else None
         )
+        if summary:
+            recent_turns: List[ConversationTurn] = [
+                ConversationTurn(
+                    session_id=session_id,
+                    turn_number=getattr(session, "turn_count", 0),
+                    user_message=summary,
+                    assistant_message=summary,
+                )
+            ]
+        else:
+            recent_turns = self.session_manager.get_session_turns(
+                session_id,
+                limit=max_context_turns,
+            )
         
         # 기본 컨텍스트 초기화
         search_context = SearchContext(
@@ -120,10 +136,7 @@ class ContextAwareSearchEngine:
             # 컨텍스트가 없으면 원본 쿼리 반환
             return search_context
         
-        # 이전 질문들 수집
-        search_context.previous_queries = [
-            turn.user_message for turn in recent_turns[-max_context_turns:]
-        ]
+        # 요약을 사용하므로 개별 이전 질문은 추출하지 않음
         
         # 현재 주제들 수집
         session_topics = self.session_manager.get_session_topics(session_id)
@@ -214,7 +227,6 @@ class ContextAwareSearchEngine:
             for pattern, clarification_type in self.clarification_patterns:
                 if pattern.search(query_lower):
                     return 'clarification'
-            
             return 'follow_up'
         
         # 후속 질문 패턴 확인
@@ -292,6 +304,16 @@ class ContextAwareSearchEngine:
     ) -> str:
         """후속 질문 처리"""
         enhanced_query = query
+
+        # 대명사가 포함된 경우 마지막 응답의 키워드로 치환 시도
+        if recent_turns:
+            last_turn = recent_turns[-1]
+            if last_turn.assistant_message:
+                assistant_keywords = self._extract_key_terms(last_turn.assistant_message)
+                for pattern, _ in self.pronoun_patterns:
+                    if pattern.search(enhanced_query) and assistant_keywords:
+                        enhanced_query = pattern.sub(assistant_keywords[0], enhanced_query, count=1)
+                        break
         
         # 이전 검색 쿼리에서 키워드 추출
         previous_keywords = []
