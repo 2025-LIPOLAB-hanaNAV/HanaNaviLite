@@ -194,13 +194,16 @@ def structure_answer(answer: str) -> str:
     return '\n'.join(structured_lines)
 
 
-def enhance_answer_quality(answer: str, citations: List[Dict[str, Any]], query: str) -> Tuple[str, List[Dict[str, Any]]]:
-    """종합적인 답변 품질 향상"""
+def enhance_answer_quality(answer: str, citations: List[Dict[str, Any]], query: str) -> Tuple[str, List[Dict[str, Any]], bool]:
+    """종합적인 답변 품질 향상 후 검증 결과 반환"""
     if not answer:
-        return answer, citations
+        return answer, citations, True
     
     # 1. 인용 일관성 검사 및 수정
     answer, filtered_citations = validate_and_fix_citations(answer, citations)
+    verified = True
+    if citations and not filtered_citations:
+        verified = False
     
     # 2. 한국어 포맷팅 개선
     answer = improve_korean_formatting(answer)
@@ -211,7 +214,7 @@ def enhance_answer_quality(answer: str, citations: List[Dict[str, Any]], query: 
     # 4. 질의 타입별 후처리
     answer = _post_process_by_query_type(answer, query)
     
-    return answer, filtered_citations
+    return answer, filtered_citations, verified
 
 
 def _post_process_by_query_type(answer: str, query: str) -> str:
@@ -235,6 +238,7 @@ def _post_process_by_query_type(answer: str, query: str) -> str:
             pass
     
     return answer
+
 
 
 def add_contextual_info(answer: str, query: str, citations: List[Dict[str, Any]]) -> str:
