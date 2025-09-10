@@ -217,14 +217,13 @@ async def send_message(session_id: str, request: SendMessageRequest):
         
         if request.include_context:
             try:
-                # 여기서 실제 검색 엔진을 연동해야 함
-                # 현재는 모의 구현
+                # IntentClassifier는 enhance_query_with_context 내부에서 호출됨
                 search_context = context_search.enhance_query_with_context(
                     session_id,
                     request.message,
                     request.max_context_turns
                 )
-                
+
                 search_context_dict = {
                     "original_query": search_context.original_query,
                     "enhanced_query": search_context.enhanced_query,
@@ -232,14 +231,20 @@ async def send_message(session_id: str, request: SendMessageRequest):
                     "confidence": search_context.confidence,
                     "previous_queries": search_context.previous_queries,
                     "mentioned_entities": search_context.mentioned_entities,
-                    "current_topics": search_context.current_topics
+                    "current_topics": search_context.current_topics,
+                    "intent": search_context.intent,
+                    "requires_search": search_context.requires_search,
                 }
-                
-                context_explanation = f"컨텍스트를 고려하여 검색을 수행했습니다. (참조 타입: {search_context.reference_type})"
-                
-                # 실제 검색은 여기서 수행되어야 함
-                # search_results = actual_search_engine.search(search_context.enhanced_query)
-                
+
+                if not search_context.requires_search:
+                    context_explanation = "일상 대화로 판단되어 검색을 생략했습니다."
+                else:
+                    context_explanation = (
+                        f"컨텍스트를 고려하여 검색을 수행했습니다. (참조 타입: {search_context.reference_type})"
+                    )
+                    # 실제 검색은 여기서 수행되어야 함
+                    # search_results = actual_search_engine.search(search_context.enhanced_query)
+
             except Exception as e:
                 logger.warning(f"Context search failed, using fallback: {e}")
                 context_explanation = "기본 검색을 수행했습니다."

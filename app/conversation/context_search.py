@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
+from app.conversation.intent_classifier import IntentClassifier
 from app.conversation.session_manager import get_session_manager, ConversationTurn
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,8 @@ class SearchContext:
     current_topics: List[str]
     reference_type: Optional[str] = None  # 'clarification', 'follow_up', 'new_topic'
     confidence: float = 1.0
+    intent: str = "unknown"
+    requires_search: bool = True
 
 
 @dataclass
@@ -39,9 +42,10 @@ class ContextualSearchResult:
 
 class ContextAwareSearchEngine:
     """컨텍스트 인식 검색 엔진"""
-    
+
     def __init__(self):
         self.session_manager = get_session_manager()
+        self.intent_classifier = IntentClassifier()
         self.pronoun_patterns = self._compile_pronoun_patterns()
         self.follow_up_patterns = self._compile_follow_up_patterns()
         self.clarification_patterns = self._compile_clarification_patterns()
@@ -99,13 +103,8 @@ class ContextAwareSearchEngine:
         Returns:
             SearchContext: 개선된 검색 컨텍스트
         """
-        # 이전 대화 내용 조회
-        recent_turns = self.session_manager.get_session_turns(
-            session_id, 
-            limit=max_context_turns
-        )
-        
-        # 기본 컨텍스트 초기화
+        intent = self.intent_classifier.classify(query)
+
         search_context = SearchContext(
             session_id=session_id,
             original_query=query,
@@ -113,53 +112,65 @@ class ContextAwareSearchEngine:
             previous_queries=[],
             mentioned_entities=[],
             current_topics=[],
-            reference_type="new_topic"  # 기본값 설정
+            reference_type="new_topic",  # 기본값 설정
+            intent=intent,
+            requires_search=intent != "small_talk",
         )
-        
+
+        if not search_context.requires_search:
+            # Small talk은 추가 검색이 필요 없음
+            return search_context
+
+        # 이전 대화 내용 조회
+        recent_turns = self.session_manager.get_session_turns(
+            session_id,
+            limit=max_context_turns
+        )
+
         if not recent_turns:
             # 컨텍스트가 없으면 원본 쿼리 반환
             return search_context
-        
+
         # 이전 질문들 수집
         search_context.previous_queries = [
             turn.user_message for turn in recent_turns[-max_context_turns:]
         ]
-        
+
         # 현재 주제들 수집
         session_topics = self.session_manager.get_session_topics(session_id)
         search_context.current_topics = [
             topic.topic_name for topic in session_topics if topic.is_active
         ]
-        
+
         # 언급된 엔티티 추출
         search_context.mentioned_entities = self._extract_entities_from_turns(recent_turns)
-        
+
         # 참조 타입 결정
         search_context.reference_type = self._determine_reference_type(
-            query, 
+            query,
             recent_turns
         )
-        
+
         # 쿼리 개선
         enhanced_query = self._enhance_query(
             query,
             recent_turns,
             search_context
         )
-        
+
         search_context.enhanced_query = enhanced_query
         search_context.confidence = self._calculate_context_confidence(
-            query, 
-            recent_turns, 
+            query,
+            recent_turns,
             search_context
         )
-        
+
         logger.info(
             f"Enhanced query for session {session_id}: "
             f"'{query}' -> '{enhanced_query}' "
             f"(type: {search_context.reference_type}, confidence: {search_context.confidence:.2f})"
         )
-        
+
         return search_context
     
     def _extract_entities_from_turns(self, turns: List[ConversationTurn]) -> List[str]:
