@@ -76,8 +76,8 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 # 포트 노출
 EXPOSE 8001
 
-# 실행 사용자 생성
-RUN useradd -m -u 1000 hananavilite
+# 실행 사용자 생성 (호스트와 동일한 UID 사용)
+RUN useradd -m -u 1008 hananavilite
 RUN chown -R hananavilite:hananavilite /app
 USER hananavilite
 

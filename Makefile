@@ -1,7 +1,7 @@
 # HanaNaviLite Makefile
 # 개발 및 배포 자동화 도구
 
-.PHONY: help install dev build test clean docker-build docker-up docker-down pull-model
+.PHONY: help install dev build test clean docker-build docker-up docker-down pull-model pull-model-container logs logs-app logs-ollama logs-redis
 
 # 기본 타겟
 help:
@@ -17,12 +17,16 @@ help:
 	@echo "  docker-build - Docker 이미지 빌드"
 	@echo "  docker-up   - Docker Compose로 전체 시스템 시작"
 	@echo "  docker-down - Docker Compose 시스템 종료"
-	@echo "  pull-model  - Ollama 모델 다운로드"
+	@echo "  pull-model  - 로컬 Ollama 모델 다운로드 (권장)"
+	@echo "  pull-model-container - Ollama 컨테이너 모델 다운로드"
 	@echo ""
 	@echo "유지보수:"
 	@echo "  clean       - 임시 파일 및 캐시 정리"
 	@echo "  backup      - 데이터 백업"
-	@echo "  logs        - 실시간 로그 모니터링"
+	@echo "  logs        - 실시간 로그 모니터링 (모든 컨테이너)"
+	@echo "  logs-app    - HanaNaviLite 앱 로그만 모니터링"
+	@echo "  logs-ollama - Ollama 로그만 모니터링"
+	@echo "  logs-redis  - Redis 로그만 모니터링"
 
 # 개발 환경 설치
 install:
@@ -82,22 +86,36 @@ docker-down:
 	docker-compose down
 	@echo "✅ 시스템 종료됨!"
 
-# Ollama 모델 다운로드 (컨테이너 사용시)
+# 로컬 Ollama 모델 다운로드 (권장)
 pull-model:
-	@echo "🤖 Ollama 모델 다운로드 중..."
-	docker-compose exec ollama ollama pull gemma3:12b-it-qat
-	@echo "✅ 모델 다운로드 완료!"
-
-# 로컬 Ollama 모델 다운로드
-pull-model-local:
 	@echo "🤖 로컬 Ollama 모델 다운로드 중..."
 	ollama pull gemma3:12b-it-qat
 	@echo "✅ 모델 다운로드 완료!"
 
-# 로그 모니터링
+# Ollama 컨테이너 모델 다운로드 (컨테이너 사용시만)
+pull-model-container:
+	@echo "🤖 Ollama 컨테이너 모델 다운로드 중..."
+	docker-compose exec ollama ollama pull gemma3:12b-it-qat
+	@echo "✅ 모델 다운로드 완료!"
+
+# 로그 모니터링 - 모든 컨테이너
 logs:
 	@echo "📋 실시간 로그 모니터링 (Ctrl+C로 종료):"
+	@echo "모든 컨테이너 로그를 실시간으로 표시합니다..."
 	docker-compose logs -f
+
+# 특정 서비스 로그만 확인
+logs-app:
+	@echo "📋 HanaNaviLite 앱 로그:"
+	docker-compose logs -f hananavilite
+
+logs-ollama:
+	@echo "📋 Ollama 로그:"
+	docker-compose logs -f ollama
+
+logs-redis:
+	@echo "📋 Redis 로그:"
+	docker-compose logs -f redis
 
 # 정리 작업
 clean:

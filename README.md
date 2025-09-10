@@ -41,7 +41,7 @@
 ### **환경 요구사항**
 - **최소**: 8GB RAM, 4core CPU
 - **권장**: 16GB+ RAM, 8core+ CPU  
-- **소프트웨어**: Python 3.11+, Node.js 16+
+- **소프트웨어**: Python 3.11+, Node.js 16+, Docker (컨테이너 사용시)
 - **LLM 서버**: Ollama 서버 (포트 11435에서 실행 중)
 
 ## 📦 **설치 및 실행 방법**
@@ -93,37 +93,68 @@ curl http://localhost:11435/api/tags
 curl -X POST http://localhost:11435/api/pull -d '{"name": "gemma3:12b-it-qat"}'
 ```
 
-### ## 🐳 **Docker 실행 (컨테이너 환경)**
+## 🐳 **Docker 실행 (컨테이너 환경)**
 
-### **방법 1: 로컬 Ollama API 사용 (추천)**
+### **✅ 방법 1: 로컬 Ollama API 사용 (현재 설정 / 추천)**
 
-```bash
-# 1. 로컬 Ollama 서버 시작 (11434 포트)
-ollama serve
-
-# 2. 필요한 모델 다운로드
-ollama pull gemma3:12b-it-qat
-
-# 3. Docker Compose로 실행
-docker-compose up -d
-```
-
-### **방법 2: Ollama 컨테이너 포함 실행**
+**현재 서버의 Ollama가 포트 11435에서 실행되는 환경을 위한 설정입니다.**
 
 ```bash
-# GPU가 있는 환경
-docker-compose --profile ollama-container up -d
+# 1. Docker 컨테이너 실행 (로컬 Ollama 11435 포트 사용)
+make docker-up
+# 또는: docker-compose up -d
 
-# 컨테이너 내부에서 모델 다운로드
-docker exec -it hananavilite-ollama ollama pull gemma3:12b-it-qat
+# 2. 모델이 없다면 로컬에서 다운로드
+make pull-model
+# 또는: ollama pull gemma3:12b-it-qat
+
+# 3. 실시간 로그 모니터링
+make logs
 ```
 
-**🎯 Docker 접속 주소:**
-- **🤖 챗봇 UI**: http://localhost:80
+**🎯 접속 주소 (Docker):**
+- **🤖 챗봇 UI**: http://localhost:3000
 - **📡 API 서버**: http://localhost:8001  
 - **📚 API 문서**: http://localhost:8001/docs
 
-> **자세한 Docker 사용법은 [DOCKER_USAGE.md](./DOCKER_USAGE.md) 참고**
+### **🔧 방법 2: Ollama 컨테이너 포함 실행 (선택사항)**
+
+**별도 Ollama 서버 없이 모든 것을 컨테이너로 실행:**
+
+```bash
+# 1. Ollama 컨테이너와 함께 실행 (GPU 필요)
+docker-compose --profile ollama-container up -d
+
+# 2. docker-compose.yml에서 Ollama URL 변경 필요:
+# OLLAMA_BASE_URL=http://ollama:11434  # 주석 해제
+# # OLLAMA_BASE_URL=http://host-gateway:11435  # 주석 처리
+
+# 3. 컨테이너에서 모델 다운로드
+make pull-model-container
+# 또는: docker-compose exec ollama ollama pull gemma3:12b-it-qat
+```
+
+### **🛠️ 유용한 Docker 명령어**
+
+```bash
+# 📊 상태 확인
+make logs              # 모든 컨테이너 실시간 로그
+make logs-app          # 앱 컨테이너만 로그
+docker-compose ps      # 컨테이너 상태 확인
+
+# 🔄 관리
+make docker-down       # 시스템 종료
+make clean            # 캐시 정리
+docker-compose restart hananavilite  # 앱만 재시작
+
+# 🧪 API 테스트
+curl -X POST "http://localhost:8001/api/v1/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "안녕하세요"}'
+
+# 📊 헬스체크
+curl http://localhost:8001/api/v1/health
+```
 
 ---
 

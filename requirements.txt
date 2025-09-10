@@ -17,6 +17,7 @@ sentence-transformers>=2.0.0
 PyPDF2>=3.0.0
 openpyxl>=3.1.0
 python-docx>=1.1.0
+pandas>=2.0.0
 
 # HTTP 클라이언트 (Ollama 통신)
 httpx>=0.25.0
