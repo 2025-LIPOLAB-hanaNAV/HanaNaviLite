@@ -40,9 +40,9 @@ install:
 # 개발 서버 실행
 dev:
 	@echo "🚀 개발 서버 시작 중..."
-	@echo "API 서버: http://localhost:8001"
+	@echo "API 서버: http://localhost:8011"
 	@echo "UI 서버: http://localhost:5175"
-	@echo "API 문서: http://localhost:8001/docs"
+	@echo "API 문서: http://localhost:8011/docs"
 	@echo ""
 	@echo "Ctrl+C로 종료하세요."
 	. venv/bin/activate && python -m app.main &
@@ -73,9 +73,9 @@ docker-up:
 	@echo "✅ 시스템 시작됨!"
 	@echo ""
 	@echo "접속 정보:"
-	@echo "  - API: http://localhost:8001"
+	@echo "  - API: http://localhost:8011"
 	@echo "  - UI: http://localhost:3000 (개발) 또는 http://localhost (프로덕션)"
-	@echo "  - API 문서: http://localhost:8001/docs"
+	@echo "  - API 문서: http://localhost:8011/docs"
 	@echo ""
 	@echo "상태 확인: make logs"
 	@echo "종료: make docker-down"
