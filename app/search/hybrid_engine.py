@@ -26,7 +26,13 @@ class HybridSearchEngine:
         
         logger.info("Hybrid Search Engine initialized")
     
-    async def search(self, query: str, top_k: int = 20, filters: Optional[Dict[str, Any]] = None) -> List[HybridSearchResult]:
+    async def search(
+        self,
+        query: str,
+        top_k: int = 20,
+        filters: Optional[Dict[str, Any]] = None,
+        original_query: Optional[str] = None,
+    ) -> List[HybridSearchResult]:
         """
         하이브리드 검색 수행
         - 쿼리 정규화
@@ -34,6 +40,14 @@ class HybridSearchEngine:
         - RRF 융합
         """
         try:
+            # 원본 vs 재작성 쿼리 로깅
+            if original_query:
+                logger.info(
+                    f"Hybrid search query - original: '{original_query}', rewritten: '{query}'"
+                )
+            else:
+                logger.info(f"Hybrid search query: '{query}'")
+
             # 1. 쿼리 정규화 및 임베딩 생성
             cleaned_query = self.text_processor.clean_query(query)
             query_embedding = get_text_embedding(query)
