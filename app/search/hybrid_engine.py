@@ -1,10 +1,13 @@
 import logging
-from typing import List, Optional, Dict, Any
 import asyncio
+import time
+from typing import List, Optional, Dict, Any
 
-from app.search.faiss_engine import get_faiss_engine, VectorSearchResult
-from app.search.ir_engine import get_ir_engine, IRSearchResult
+from app.search.faiss_engine import get_faiss_engine
+from app.search.ir_engine import get_ir_engine
 from app.search.rrf import get_rrf_algorithm, HybridSearchResult
+from app.search.recommendation_engine import get_recommendation_engine
+from app.search.planner import get_search_planner
 from app.llm.embedding import get_text_embedding
 from app.utils.text_processor import get_text_processor
 from app.core.performance_tuner import get_performance_tuner
@@ -23,6 +26,8 @@ class HybridSearchEngine:
         self.rrf_algorithm = get_rrf_algorithm()
         self.text_processor = get_text_processor()
         self.performance_tuner = get_performance_tuner()
+        self.recommendation_engine = get_recommendation_engine()
+        self.search_planner = get_search_planner()
         
         logger.info("Hybrid Search Engine initialized")
     
@@ -37,33 +42,105 @@ class HybridSearchEngine:
             # 1. 쿼리 정규화 및 임베딩 생성
             cleaned_query = self.text_processor.clean_query(query)
             query_embedding = get_text_embedding(query)
-            
-            # 2. 병렬 검색 실행
-            ir_task = asyncio.to_thread(self.ir_engine.search, cleaned_query, top_k * 2, filters=filters)
-            vector_task = asyncio.to_thread(self.vector_engine.search, query_embedding, top_k * 2, filter_metadata=filters)
-            
-            ir_results, vector_results = await asyncio.gather(ir_task, vector_task)
-            
-            logger.info(f"IR search found {len(ir_results)} results, Vector search found {len(vector_results)} results")
-            
-            # 3. RRF 융합
-            # Get current weights from PerformanceTuner
-            weights = self.performance_tuner.get_search_weights()
+
+            # 2. 검색 전략 수립
+            plan = self.search_planner.plan(query, filters)
+            latencies: Dict[str, float] = {}
+
+            async def run_ir():
+                start = time.perf_counter()
+                result = await asyncio.to_thread(
+                    self.ir_engine.search, cleaned_query, top_k * 2, filters=filters
+                )
+                latencies["ir"] = time.perf_counter() - start
+                return result
+
+            async def run_vector():
+                start = time.perf_counter()
+                result = await asyncio.to_thread(
+                    self.vector_engine.search, query_embedding, top_k * 2, filter_metadata=filters
+                )
+                latencies["vector"] = time.perf_counter() - start
+                return result
+
+            tasks = []
+            if plan.use_ir:
+                tasks.append(run_ir())
+            if plan.use_vector:
+                tasks.append(run_vector())
+
+            results = await asyncio.gather(*tasks)
+
+            # 결과 매핑
+            idx = 0
+            ir_results = results[idx] if plan.use_ir else []
+            if plan.use_ir:
+                idx += 1
+            vector_results = results[idx] if plan.use_vector else []
+
+            if plan.use_ir:
+                logger.info(
+                    f"IR search found {len(ir_results)} results in {latencies.get('ir', 0):.3f}s"
+                )
+            if plan.use_vector:
+                logger.info(
+                    f"Vector search found {len(vector_results)} results in {latencies.get('vector', 0):.3f}s"
+                )
+
+            # 3. RRF 융합 (가중치는 플래너 결정 사용)
+            self.rrf_algorithm.vector_weight = plan.vector_weight
+            self.rrf_algorithm.ir_weight = plan.ir_weight
             fused_results = self.rrf_algorithm.fuse_results(
                 vector_results,
                 ir_results,
                 top_k,
-                vector_weight=weights["vector_weight"],
-                ir_weight=weights["ir_weight"]
+                vector_weight=plan.vector_weight,
+                ir_weight=plan.ir_weight,
             )
-            
-            # 4. (선택적) 다양성 필터링
-            # final_results = self.rrf_algorithm.get_diversity_filtered_results(fused_results)
+
+            # 4. 추천 엔진 결과 결합
+            recommendation_results: List[HybridSearchResult] = []
+            if plan.use_recommendation:
+                rec_start = time.perf_counter()
+                rec = self.recommendation_engine.get_recommendations(
+                    document_id=filters.get("document_id") if filters else None,
+                    user_id=filters.get("user_id") if filters else None,
+                    recommendation_type="hybrid",
+                    top_k=top_k,
+                )
+                latencies["recommendation"] = time.perf_counter() - rec_start
+                for r in rec.recommendations:
+                    recommendation_results.append(
+                        HybridSearchResult(
+                            chunk_id=f"rec-{r.document_id}",
+                            document_id=r.document_id,
+                            title=r.title,
+                            content="",
+                            snippet="",
+                            vector_score=0.0,
+                            ir_score=0.0,
+                            fusion_score=r.similarity_score * plan.recommendation_weight,
+                            rank=0,
+                            metadata={"reason": r.similarity_type},
+                            source_types=["recommendation"],
+                        )
+                    )
+                logger.info(
+                    f"Recommendation engine returned {len(recommendation_results)} results in {latencies.get('recommendation', 0):.3f}s"
+                )
+
             final_results = fused_results
-            
-            logger.info(f"Hybrid search completed with {len(final_results)} results for query: '{query}'")
+            if recommendation_results:
+                final_results.extend(recommendation_results)
+                final_results.sort(key=lambda x: x.fusion_score, reverse=True)
+                final_results = final_results[:top_k]
+
+            logger.info(
+                f"Hybrid search completed with {len(final_results)} results for query: '{query}'"
+            )
+            logger.info(f"Search latencies: {latencies}")
             return final_results
-            
+
         except Exception as e:
             logger.error(f"Hybrid search failed for query '{query}': {e}")
             return []
