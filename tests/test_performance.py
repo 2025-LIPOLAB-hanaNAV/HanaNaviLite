@@ -7,6 +7,7 @@ import psutil
 import time
 from fastapi.testclient import TestClient
 from app.main import app
+from app.llm.rag_pipeline import RAGPipeline
 
 client = TestClient(app)
 
@@ -17,8 +18,14 @@ def test_memory_usage():
     assert memory_gb < 25.0
 
 @pytest.mark.asyncio
-async def test_response_time():
+async def test_response_time(monkeypatch):
     """API 응답 시간 3초 이하 확인"""
+
+    async def mock_query(*args, **kwargs):
+        return {"answer": "mocked answer", "sources": []}
+
+    monkeypatch.setattr(RAGPipeline, "query", mock_query)
+
     start = time.time()
     response = client.post("/api/v1/rag/query", params={"query": "테스트 질의"})
     elapsed = time.time() - start

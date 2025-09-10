@@ -230,3 +230,13 @@ backups/
 # Evaluation data (might contain sensitive info)
 eval_data/results/
 eval_data/private/
+eval_data/
+
+# Database file
+data/hananavilite.db
+
+# Uploaded files
+uploads/
+
+# Claude settings
+.claude/

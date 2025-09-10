@@ -44,3 +44,4 @@ opencv-python-headless>=4.8.0
 # 개발/테스트 의존성
 pydantic-settings>=2.10.0
 pytest
+pytest-asyncio
