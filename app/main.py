@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 import sys
@@ -101,6 +102,17 @@ if os.path.exists(ui_dist_path):
 else:
     logger.warning(f"UI dist directory not found at {ui_dist_path}")
 
+
+# Validation error 처리기 (422 에러 디버깅용)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error(f"Validation error for {request.method} {request.url}")
+    logger.error(f"Request headers: {dict(request.headers)}")
+    logger.error(f"Validation errors: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body}
+    )
 
 # 전역 예외 처리기
 @app.exception_handler(Exception)

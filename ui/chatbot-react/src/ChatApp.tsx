@@ -57,8 +57,8 @@ const ChatApp: React.FC = () => {
       // RAG 쿼리 실행
       const response = await fetch(`${API_BASE}/rag/query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ query: userMessage.content })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMessage.content })
       })
 
       if (!response.ok) {

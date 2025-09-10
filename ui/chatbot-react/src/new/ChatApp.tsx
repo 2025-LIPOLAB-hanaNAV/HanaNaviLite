@@ -91,8 +91,8 @@ const ChatApp: React.FC = () => {
         .map(m => ({ role: m.role, content: m.content }))
       const res = await fetch(`${RAG_BASE}/rag/stream_query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ query: user.content }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: user.content }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
