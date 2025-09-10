@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
 import sys
@@ -92,6 +93,15 @@ app.add_middleware(
 )
 
 
+# 정적 파일 서빙 (React UI)
+ui_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui", "dist")
+if os.path.exists(ui_dist_path):
+    app.mount("/ui", StaticFiles(directory=ui_dist_path, html=True), name="ui")
+    logger.info(f"UI static files mounted at /ui from {ui_dist_path}")
+else:
+    logger.warning(f"UI dist directory not found at {ui_dist_path}")
+
+
 # 전역 예외 처리기
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -121,7 +131,8 @@ async def root():
         "message": "HanaNaviLite API",
         "version": settings.api_version,
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
+        "ui": "/ui" if os.path.exists(ui_dist_path) else None
     }
 
 

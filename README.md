@@ -113,7 +113,7 @@ make logs
 ```
 
 **🎯 접속 주소 (Docker):**
-- **🤖 챗봇 UI**: http://localhost:3000
+- **🤖 챗봇 UI**: http://localhost:8001/ui
 - **📡 API 서버**: http://localhost:8001  
 - **📚 API 문서**: http://localhost:8001/docs
 
@@ -154,13 +154,16 @@ curl -X POST "http://localhost:8001/api/v1/rag/query" \
 
 # 📊 헬스체크
 curl http://localhost:8001/api/v1/health
+
+# 🌐 UI 접속 테스트
+curl http://localhost:8001/ui/
 ```
 
 ---
 
 **📱 챗봇 사용법**
 
-1. **챗봇 UI 접속**: http://localhost:5174 (로컬) / http://localhost:80 (Docker)
+1. **챗봇 UI 접속**: http://localhost:5174 (로컬) / http://localhost:8001/ui (Docker)
 2. **문서 업로드**: 우측 사이드바에서 PDF, DOCX, XLSX 파일 업로드
 3. **질문하기**: 하단 입력창에서 문서 관련 질문 입력
 4. **실시간 답변**: RAG 기반으로 문서에서 정확한 답변 생성
