@@ -5,6 +5,7 @@ import asyncio
 from app.search.faiss_engine import get_faiss_engine, VectorSearchResult
 from app.search.ir_engine import get_ir_engine, IRSearchResult
 from app.search.rrf import get_rrf_algorithm, HybridSearchResult
+from app.search.reranker import get_reranker
 from app.llm.embedding import get_text_embedding
 from app.utils.text_processor import get_text_processor
 from app.core.performance_tuner import get_performance_tuner
@@ -21,17 +22,18 @@ class HybridSearchEngine:
         self.ir_engine = get_ir_engine()
         self.vector_engine = get_faiss_engine()
         self.rrf_algorithm = get_rrf_algorithm()
+        self.reranker = get_reranker()
         self.text_processor = get_text_processor()
         self.performance_tuner = get_performance_tuner()
         
         logger.info("Hybrid Search Engine initialized")
     
-    async def search(self, query: str, top_k: int = 20, filters: Optional[Dict[str, Any]] = None) -> List[HybridSearchResult]:
+    async def search(self, query: str, top_k: int = 20, filters: Optional[Dict[str, Any]] = None, ground_truth: Optional[Dict[str, int]] = None) -> List[HybridSearchResult]:
         """
         하이브리드 검색 수행
         - 쿼리 정규화
         - IR, Vector 병렬 검색
-        - RRF 융합
+        - RRF 융합 후 재랭킹
         """
         try:
             # 1. 쿼리 정규화 및 임베딩 생성
@@ -60,9 +62,14 @@ class HybridSearchEngine:
             # 4. (선택적) 다양성 필터링
             # final_results = self.rrf_algorithm.get_diversity_filtered_results(fused_results)
             final_results = fused_results
-            
-            logger.info(f"Hybrid search completed with {len(final_results)} results for query: '{query}'")
-            return final_results
+
+            # 5. 재랭킹
+            reranked_results = self.reranker.rerank(cleaned_query, final_results, ground_truth=ground_truth)
+
+            logger.info(
+                f"Hybrid search completed with {len(reranked_results)} results for query: '{query}'"
+            )
+            return reranked_results
             
         except Exception as e:
             logger.error(f"Hybrid search failed for query '{query}': {e}")
