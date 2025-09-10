@@ -41,11 +41,82 @@
 ### **환경 요구사항**
 - **최소**: 8GB RAM, 4core CPU
 - **권장**: 16GB+ RAM, 8core+ CPU  
-- **소프트웨어**: Docker & Docker Compose 또는 Python 3.11+
+- **소프트웨어**: Python 3.11+, Node.js 16+
+- **LLM 서버**: Ollama 서버 (포트 11435에서 실행 중)
 
-## 📦 **설치 방법**
+## 📦 **설치 및 실행 방법**
 
-### **방법 1: Docker로 원클릭 실행 (권장)**
+### **⚡ 추천: 서버 기반 Ollama 환경 (현재 설정)**
+
+현재 프로젝트는 **서버의 포트 11435에서 실행 중인 Ollama**를 사용하도록 설정되어 있습니다.
+
+```bash
+# 1. 프로젝트 클론
+git clone https://github.com/your-org/HanaNaviLite.git
+cd HanaNaviLite
+
+# 2. Python 가상환경 설정
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 3. Python 의존성 설치
+pip install -r requirements.txt
+
+# 4. React UI 의존성 설치
+cd ui/chatbot-react
+npm install
+cd ../..
+
+# 5. 백엔드 API 서버 시작 (터미널 1)
+python -m app.main
+
+# 6. 프론트엔드 UI 시작 (터미널 2)
+cd ui/chatbot-react
+npm run dev
+```
+
+**🎯 접속 주소:**
+- **🤖 챗봇 UI**: http://localhost:5174 ← **여기서 챗봇 사용!**
+- **📡 API 서버**: http://localhost:8001
+- **📚 API 문서**: http://localhost:8001/docs
+
+### **🔧 서버 Ollama 상태 확인**
+
+```bash
+# Ollama 서버 상태 확인
+curl http://localhost:11435/
+
+# 사용 가능한 모델 확인
+curl http://localhost:11435/api/tags
+
+# 모델 다운로드 (필요시)
+curl -X POST http://localhost:11435/api/pull -d '{"name": "gemma3:12b-it-qat"}'
+```
+
+### **📱 챗봇 사용법**
+
+1. **챗봇 UI 접속**: http://localhost:5174
+2. **문서 업로드**: 우측 사이드바에서 PDF, DOCX, XLSX 파일 업로드
+3. **질문하기**: 하단 입력창에서 문서 관련 질문 입력
+4. **실시간 답변**: RAG 기반으로 문서에서 정확한 답변 생성
+
+### **🔄 백업: 로컬 Ollama 설정**
+
+서버 Ollama를 사용할 수 없는 경우 로컬에서 실행:
+
+```bash
+# 1. Ollama 설치 (Linux/macOS)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. 모델 다운로드 및 서버 시작
+ollama pull gemma3:12b-it-qat
+ollama serve --host 0.0.0.0 --port 11435
+
+# 3. 설정 파일 확인 (필요시 포트 변경)
+# app/core/config.py에서 ollama_base_url 확인
+```
+
+### **🐳 Docker 환경 (선택사항)**
 
 ```bash
 # 1. 프로젝트 클론
@@ -67,48 +138,6 @@ make pull-model
 - 🚀 **개발 UI**: http://localhost:3000 
 - 📡 **API 서버**: http://localhost:8001
 - 📚 **API 문서**: http://localhost:8001/docs
-
-### **방법 2: 로컬 개발 환경**
-
-```bash
-# 1. 프로젝트 클론
-git clone https://github.com/your-org/HanaNaviLite.git
-cd HanaNaviLite
-
-# 2. Python 환경 설정
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 3. 의존성 설치
-pip install -r requirements.txt
-
-# 4. React UI 의존성 설치
-cd ui/chatbot-react && npm install && cd ../..
-
-# 5. 개발 서버 시작
-make dev
-# 또는 수동 실행:
-# 터미널 1: python -m app.main
-# 터미널 2: cd ui/chatbot-react && npm run dev
-```
-
-**접속 주소:**
-- 🖥️ **React UI**: http://localhost:5175
-- 📡 **API 서버**: http://localhost:8001
-- 📚 **API 문서**: http://localhost:8001/docs
-
-### **방법 3: Ollama 서버 별도 설치**
-
-```bash
-# Ollama 설치 (Linux/macOS)
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# 모델 다운로드
-ollama pull gemma2:2b
-
-# 서버 시작
-ollama serve
-```
 
 ---
 
@@ -173,6 +202,55 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 - ⚠️ `test_phase4_complete.py`: 환경 설정 문제로 인해 테스트 실행 불가 (API 서버 및 특정 Pytest Fixture 필요)
 
 **종합**: 핵심 백엔드 기능은 모두 테스트를 통과했습니다. UI 및 통합 테스트는 별도 환경 설정이 필요합니다.
+
+---
+
+## 🔧 **문제 해결**
+
+### **일반적인 문제 및 해결방법**
+
+#### 1. **Ollama 서버 연결 실패**
+```bash
+# 서버 상태 확인
+curl http://localhost:11435/
+# 실패시: Ollama 서버가 실행 중인지 확인
+
+# 로컬 Ollama 대안
+ollama serve --host 0.0.0.0 --port 11435
+```
+
+#### 2. **OCR/OpenCV 오류 (GUI 환경 없음)**
+```bash
+# 이미 headless 버전으로 수정됨
+pip install opencv-python-headless
+```
+
+#### 3. **메모리 부족 오류**
+```bash
+# 메모리 사용량 확인
+curl http://localhost:8001/api/v1/health/memory
+
+# 캐시 정리
+curl -X POST http://localhost:8001/api/v1/health/cache/cleanup
+```
+
+#### 4. **포트 충돌**
+```bash
+# 포트 사용 확인
+netstat -tulpn | grep :8001
+netstat -tulpn | grep :5174
+netstat -tulpn | grep :11435
+
+# 다른 포트로 변경 (vite.config.ts 또는 app/core/config.py 수정)
+```
+
+#### 5. **React UI 빌드 오류**
+```bash
+cd ui/chatbot-react
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
 
 ---
 

@@ -37,7 +37,7 @@ typing-extensions>=4.8.0
 
 # 이미지 처리 (OCR)
 pytesseract>=0.3.10
-opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
 
 # 개발/테스트 의존성
 pydantic-settings>=2.10.0

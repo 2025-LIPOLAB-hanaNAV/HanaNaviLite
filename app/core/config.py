@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     faiss_index_path: str = "models/faiss_index" # FAISS 인덱스 파일 저장 경로
     
     # LLM (대규모 언어 모델) 설정
-    ollama_base_url: str = "http://localhost:11434" # Ollama 서버의 기본 URL
+    ollama_base_url: str = "http://localhost:11435" # Ollama 서버의 기본 URL
     llm_model: str = "gemma3:12b-it-qat" # 사용할 LLM 모델 이름
     llm_max_tokens: int = 2048 # LLM 응답의 최대 토큰 수
     llm_temperature: float = 0.1 # LLM 응답의 다양성 (창의성) 제어 (0.0 ~ 1.0)
