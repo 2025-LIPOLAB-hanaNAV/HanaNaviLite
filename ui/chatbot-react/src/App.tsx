@@ -4,7 +4,7 @@ import { HomePage } from './components/HomePage';
 import { ChatPage } from './components/ChatPage';
 import { SavedDestinations } from './components/SavedDestinations';
 import { AdminConsole } from './components/AdminConsole';
-import { DocumentViewer } from './components/DocumentViewer';
+import { DocumentSearch } from './components/DocumentSearch';
 import { EvidencePanel } from './components/EvidencePanel';
 
 interface EvidenceItem {
@@ -102,7 +102,7 @@ export default function App() {
         );
       case 'documents':
         return (
-          <DocumentViewer />
+          <DocumentSearch />
         );
       case 'admin':
         return (
