@@ -10,7 +10,6 @@ import { SearchBar } from './SearchBar';
 import { QualityDashboard } from './QualityDashboard';
 import { Icon } from './ui/Icon';
 import { cn } from './ui/utils';
-import { apiClient, ConversationSession, SendMessageResponse } from '../api/client';
 
 interface ChatMessage {
   id: string;
@@ -62,8 +61,6 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [currentSession, setCurrentSession] = useState<ConversationSession | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -101,37 +98,8 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     }
   ];
 
-  // Initialize conversation session
-  useEffect(() => {
-    const initializeSession = async () => {
-      setSessionLoading(true);
-      try {
-        const session = await apiClient.createSession({
-          title: `Chat Session - ${new Date().toLocaleDateString()}`,
-          max_turns: 20,
-          session_duration_hours: 24
-        });
-        setCurrentSession(session);
-      } catch (error) {
-        console.error('Failed to create session:', error);
-        // Set a fallback session to allow chat to work even if session creation fails
-        setCurrentSession({
-          session_id: 'fallback-session',
-          title: 'Fallback Session',
-          max_turns: 20,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString()
-        });
-      } finally {
-        setSessionLoading(false);
-      }
-    };
-
-    initializeSession();
-  }, []);
-
   const handleSearch = async (query: string, files?: File[]) => {
-    if (!query.trim() || !currentSession) return;
+    if (!query.trim()) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -157,67 +125,26 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     
     setMessages(prev => [...prev, loadingMessage]);
 
-    try {
-      // Upload files if provided
-      if (files && files.length > 0) {
-        for (const file of files) {
-          await apiClient.uploadFile(file);
-        }
-      }
-
-      // Send message using conversation API
-      const response: SendMessageResponse = await apiClient.sendMessage(currentSession.session_id, {
-        message: query,
-        search_engine_type: currentMode === 'quick' ? 'hybrid' : currentMode === 'precise' ? 'vector' : 'ir',
-        include_context: true,
-        max_context_turns: 3
-      });
-
+    // Simulate API call
+    setTimeout(() => {
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         type: 'assistant',
-        content: response.assistant_message,
+        content: '육아휴직 급여 지급 기준에 대해 안내드리겠습니다.\n\n근속 6개월 이상의 정규직 직원이 육아휴직을 신청할 수 있으며, 최대 1년까지 가능합니다. 육아휴직 기간 중에는 기본급의 40%를 육아휴직급여로 지급하며, 매월 25일에 계좌로 입금됩니다.\n\n신청 절차는 휴직 시작일 30일 전까지 인사팀에 신청서를 제출하시면 됩니다.',
         timestamp: new Date().toLocaleTimeString('ko-KR', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
         state: 'success',
-        evidenceCount: response.search_context ? 1 : 0,
-        responseTime: response.response_time_ms / 1000,
+        evidenceCount: 2,
+        responseTime: 2.7,
         hasPII: false,
-        isEvidenceLow: !response.search_context
+        isEvidenceLow: false
       };
 
       setMessages(prev => prev.slice(0, -1).concat(assistantMessage));
-      
-      // Update session info
-      try {
-        const updatedSession = await apiClient.getSession(currentSession.session_id);
-        setCurrentSession(updatedSession);
-      } catch (error) {
-        console.error('Failed to update session info:', error);
-      }
-    } catch (error) {
-      console.error('API Error:', error);
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 2).toString(),
-        type: 'assistant',
-        content: '죄송합니다. 서버에서 응답을 받는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-        timestamp: new Date().toLocaleTimeString('ko-KR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-        state: 'warning',
-        evidenceCount: 0,
-        responseTime: 0,
-        hasPII: false,
-        isEvidenceLow: true
-      };
-
-      setMessages(prev => prev.slice(0, -1).concat(errorMessage));
-    } finally {
       setIsLoading(false);
-    }
+    }, 2000);
   };
 
   const handleRetry = () => {

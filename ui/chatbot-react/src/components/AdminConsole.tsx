@@ -52,87 +52,6 @@ interface UsageData {
 export function AdminConsole() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [usageStats, setUsageStats] = useState<UsageStatistics | null>(null);
-  const [popularQueries, setPopularQueries] = useState<PopularQuery[]>([]);
-  const [documentUsage, setDocumentUsage] = useState<DocumentUsage[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load data from APIs
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [stats, queries, docs, status] = await Promise.all([
-        apiClient.getUsageStatistics('total'),
-        apiClient.getPopularQueries(10),
-        apiClient.getDocumentUsage(10),
-        apiClient.getSystemStatus()
-      ]);
-      
-      setUsageStats(stats);
-      setPopularQueries(queries);
-      setDocumentUsage(docs);
-      setSystemStatus(status);
-    } catch (err) {
-      setError('Failed to load admin data: ' + (err as Error).message);
-      console.error('Failed to load admin data:', err);
-      // Set fallback data to allow the page to render
-      setUsageStats({
-        total_queries: 0,
-        unique_users: 0,
-        avg_response_time_ms: 0,
-        successful_queries: 0,
-        failed_queries: 0,
-        total_sessions: 0
-      });
-      setSystemStatus({
-        database_status: {
-          status: "unknown",
-          database_path: "",
-          documents_count: 0,
-          chunks_count: 0,
-          cache_count: 0,
-          database_size_mb: 0,
-          wal_mode: false
-        },
-        faiss_status: { status: "unknown" },
-        message: "Failed to load system status"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await loadData();
-    setIsRefreshing(false);
-  };
-
-  const handleClearCache = async () => {
-    try {
-      await apiClient.clearCache();
-      alert('Cache cleared successfully!');
-      await loadData(); // Reload data
-    } catch (err) {
-      alert('Failed to clear cache: ' + (err as Error).message);
-    }
-  };
-
-  const handleReindexDocuments = async () => {
-    try {
-      await apiClient.reindexDocuments();
-      alert('Document reindexing started!');
-    } catch (err) {
-      alert('Failed to start reindexing: ' + (err as Error).message);
-    }
-  };
 
   const knowledgeConnectors: KnowledgeConnector[] = [
     {
@@ -230,28 +149,13 @@ export function AdminConsole() {
   const connectedSources = knowledgeConnectors.filter(conn => conn.status === 'connected').length;
   const errorSources = knowledgeConnectors.filter(conn => conn.status === 'error').length;
 
-  if (loading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading admin data...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 space-y-6">
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-        <Button onClick={handleRefresh}>Try Again</Button>
-      </div>
-    );
-  }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 2000);
+  };
 
   const getStatusColor = (status: KnowledgeConnector['status']) => {
     switch (status) {
@@ -339,7 +243,7 @@ export function AdminConsole() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">총 문서 수</p>
-                      <p className="text-2xl font-medium">{systemStatus?.database_status.documents_count.toLocaleString() || totalDocuments.toLocaleString()}</p>
+                      <p className="text-2xl font-medium">{totalDocuments.toLocaleString()}</p>
                     </div>
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <FileText className="h-5 w-5 text-primary" />
@@ -350,35 +254,11 @@ export function AdminConsole() {
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">총 쿼리 수</p>
-                      <p className="text-2xl font-medium">{usageStats?.total_queries.toLocaleString() || '0'}</p>
+                      <p className="text-sm text-muted-foreground">연결된 소스</p>
+                      <p className="text-2xl font-medium">{connectedSources}/{knowledgeConnectors.length}</p>
                     </div>
                     <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-success" />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">총 세션 수</p>
-                      <p className="text-2xl font-medium">{usageStats?.total_sessions.toLocaleString() || '0'}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-blue-500" />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">평균 응답시간</p>
-                      <p className="text-2xl font-medium">{usageStats?.avg_response_time_ms?.toFixed(0) || '0'}ms</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-yellow-500" />
+                      <Database className="h-5 w-5 text-success" />
                     </div>
                   </div>
                 </Card>
