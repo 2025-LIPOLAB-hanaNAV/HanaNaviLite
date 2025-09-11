@@ -77,6 +77,18 @@ class SendMessageResponse(BaseModel):
     current_topics: List[str] = []
 
 
+class PreloadRequest(BaseModel):
+    """모드 사전 로드 요청"""
+    mode: str = Field(default="quick")  # quick, precise, summary
+
+class PreloadResponse(BaseModel):
+    """모드 사전 로드 응답"""
+    mode: str
+    model: str
+    success: bool
+    keep_alive: str
+
+
 class SessionInfoResponse(BaseModel):
     """세션 정보 응답"""
     session_id: str
@@ -330,6 +342,25 @@ async def send_message(session_id: str, request: SendMessageRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to send message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@conversation_router.post("/preload", response_model=PreloadResponse)
+async def preload_mode(request: PreloadRequest):
+    """지정한 채팅 모드의 모델을 미리 로드"""
+    try:
+        chat_mode_client = get_chat_mode_client()
+        keep_alive = "15m"
+        ok = await chat_mode_client.preload_mode(request.mode, keep_alive=keep_alive)
+        config = chat_mode_client.get_config(request.mode)
+        return PreloadResponse(
+            mode=request.mode,
+            model=config["model"],
+            success=ok,
+            keep_alive=keep_alive,
+        )
+    except Exception as e:
+        logger.error(f"Failed to preload mode {request.mode}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

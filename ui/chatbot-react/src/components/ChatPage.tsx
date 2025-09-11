@@ -59,6 +59,8 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState('quick');
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadOk, setPreloadOk] = useState<null | boolean>(null);
   const [filters, setFilters] = useState<FilterState>({
     department: 'all',
     dateRange: 'all',
@@ -331,6 +333,36 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
                 })}
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  setIsPreloading(true);
+                  setPreloadOk(null);
+                  const res = await fetch(`${API_BASE_URL}/api/v1/conversation/preload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: currentMode })
+                  });
+                  const data = await res.json();
+                  setPreloadOk(!!data.success);
+                } catch (e) {
+                  setPreloadOk(false);
+                } finally {
+                  setIsPreloading(false);
+                  // Auto-clear feedback after a short delay
+                  setTimeout(() => setPreloadOk(null), 2000);
+                }
+              }}
+              disabled={isPreloading}
+              className={cn(
+                preloadOk === true && 'border-success text-success',
+                preloadOk === false && 'border-destructive text-destructive'
+              )}
+            >
+              {isPreloading ? '준비중…' : preloadOk === true ? '준비완료' : preloadOk === false ? '실패' : '확정'}
+            </Button>
           </div>
 
           {/* Filter Toggle */}

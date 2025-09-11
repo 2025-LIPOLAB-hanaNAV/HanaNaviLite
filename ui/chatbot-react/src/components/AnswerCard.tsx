@@ -58,6 +58,29 @@ export function AnswerCard({
     destinations: false
   });
 
+  const normalizeMarkdown = (text: string) => {
+    if (!text) return '';
+    return text
+      .replace(/<br\s*\/?>(\s*)/gi, '\n')
+      .replace(/<\/?ul>/gi, '')
+      .replace(/<\/?ol>/gi, '')
+      .replace(/<li>/gi, '- ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<p>/gi, '')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<strong>/gi, '**')
+      .replace(/<\/strong>/gi, '**')
+      .replace(/<b>/gi, '**')
+      .replace(/<\/b>/gi, '**')
+      .replace(/<em>/gi, '*')
+      .replace(/<\/em>/gi, '*')
+      .replace(/<i>/gi, '*')
+      .replace(/<\/i>/gi, '*')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -259,6 +282,7 @@ export function AnswerCard({
               )}>
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
+                  breaks
                   components={{
                     p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                     ul: ({ children }) => <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">{children}</ul>,
@@ -274,7 +298,7 @@ export function AnswerCard({
                     h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
                   }}
                 >
-                  {preview}
+                  {normalizeMarkdown(preview)}
                 </ReactMarkdown>
               </div>
             </Card>

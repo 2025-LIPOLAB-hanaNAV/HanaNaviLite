@@ -38,6 +38,35 @@ export function ChatBubble({
   const isUser = type === 'user';
   const isSystem = type === 'system';
 
+  // Normalize common HTML breaks and spacing artifacts to Markdown-friendly newlines
+  const normalizeMarkdown = (text: string) => {
+    if (!text) return '';
+    return text
+      // Convert HTML <br> variants to newlines
+      .replace(/<br\s*\/?>(\s*)/gi, '\n')
+      // Basic HTML -> Markdown-ish conversions for common tags
+      .replace(/<\/?ul>/gi, '')
+      .replace(/<\/?ol>/gi, '')
+      .replace(/<li>/gi, '- ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<p>/gi, '')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<strong>/gi, '**')
+      .replace(/<\/strong>/gi, '**')
+      .replace(/<b>/gi, '**')
+      .replace(/<\/b>/gi, '**')
+      .replace(/<em>/gi, '*')
+      .replace(/<\/em>/gi, '*')
+      .replace(/<i>/gi, '*')
+      .replace(/<\/i>/gi, '*')
+      // Normalize CRLF
+      .replace(/\r\n/g, '\n')
+      // Collapse 3+ newlines to two (Markdown paragraph break)
+      .replace(/\n{3,}/g, '\n\n')
+      // Trim excessive leading/trailing whitespace
+      .trim();
+  };
+
   if (state === 'loading') {
     return (
       <div className={cn(
@@ -130,10 +159,13 @@ export function ChatBubble({
 
           <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
             {isUser ? (
-              <div className="whitespace-pre-wrap">{content}</div>
+              <div className="whitespace-pre-wrap">{normalizeMarkdown(content)}</div>
             ) : (
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
+                // Treat single newlines as <br/>
+                // This helps with content coming from chat that uses single newlines
+                breaks
                 components={{
                   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                   ul: ({ children }) => <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">{children}</ul>,
@@ -149,7 +181,7 @@ export function ChatBubble({
                   h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
                 }}
               >
-                {content}
+                {normalizeMarkdown(content)}
               </ReactMarkdown>
             )}
           </div>

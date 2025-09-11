@@ -101,6 +101,80 @@ class OllamaClient:
         except Exception:
             return False
 
+    async def show_model(self, model_name: str) -> bool:
+        """모델 메타 정보를 조회하여 존재 여부 확인"""
+        try:
+            resp = await self._request("POST", "/api/show", json={"model": model_name})
+            return resp.status_code == 200
+        except Exception as e:
+            logger.warning(f"Model show failed for {model_name}: {e}")
+            return False
+
+    async def warm_up(self, model_name: Optional[str] = None, keep_alive: str = "5m") -> bool:
+        """지정한 모델을 미리 로드하여 첫 토큰 지연을 줄임
+
+        구현 메모:
+        - keep_alive는 Ollama 스펙상 최상위 필드로 전달해야 함
+        - 일부 조합에서 /api/generate가 500을 반환하는 경우가 있어 단계적 폴백 수행
+        """
+        target_model = model_name or self.model
+
+        # 0) 모델 존재 확인 (없으면 곧바로 실패 반환)
+        exists = await self.show_model(target_model)
+        if not exists:
+            logger.error(f"Model not found locally: {target_model}. Please pull it with 'ollama pull {target_model}'.")
+            return False
+
+        logger.info(f"Warming up model: {target_model} (keep_alive={keep_alive})")
+
+        # 1) 기본 generate 시도 (정석: keep_alive는 top-level)
+        payload_generate = {
+            "model": target_model,
+            "prompt": "warmup",
+            "stream": False,
+            "keep_alive": keep_alive,
+            "options": {
+                "temperature": 0.0,
+            },
+        }
+        try:
+            await self._request("POST", "/api/generate", json=payload_generate)
+            return True
+        except Exception as e1:
+            logger.error(f"Warm-up generate failed for {target_model}: {e1}")
+
+        # 2) chat API로 재시도
+        payload_chat = {
+            "model": target_model,
+            "messages": [
+                {"role": "system", "content": "warmup"}
+            ],
+            "stream": False,
+            "keep_alive": keep_alive,
+            "options": {
+                "temperature": 0.0,
+            },
+        }
+        try:
+            await self._request("POST", "/api/chat", json=payload_chat)
+            return True
+        except Exception as e2:
+            logger.error(f"Warm-up chat failed for {target_model}: {e2}")
+
+        # 3) keep_alive 없이 최소 generate 재시도 (일부 구버전 호환)
+        payload_min = {
+            "model": target_model,
+            "prompt": "warmup",
+            "stream": False,
+            "options": {"temperature": 0.0},
+        }
+        try:
+            await self._request("POST", "/api/generate", json=payload_min)
+            return True
+        except Exception as e3:
+            logger.error(f"Warm-up minimal generate failed for {target_model}: {e3}")
+            return False
+
 
 # 전역 인스턴스
 _ollama_client: Optional[OllamaClient] = None

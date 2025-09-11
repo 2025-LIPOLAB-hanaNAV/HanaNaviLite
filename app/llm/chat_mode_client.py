@@ -90,6 +90,21 @@ class ChatModeClient:
     def get_config(self, mode: str) -> Dict[str, Any]:
         """모드별 설정 반환"""
         return self.mode_configs.get(mode, self.mode_configs["quick"])
+
+    async def preload_mode(self, mode: str, keep_alive: str = "15m") -> bool:
+        """지정 모드의 모델을 사전 로드하여 지연을 줄임"""
+        try:
+            config = self.get_config(mode)
+            client = self.get_client(mode)
+            ok = await client.warm_up(model_name=config["model"], keep_alive=keep_alive)
+            if ok:
+                logger.info(f"ChatModeClient preload ok - mode={mode}, model={config['model']}")
+            else:
+                logger.warning(f"ChatModeClient preload failed - mode={mode}, model={config['model']}")
+            return ok
+        except Exception as e:
+            logger.error(f"Failed to preload mode {mode}: {e}")
+            return False
     
     async def generate_response(
         self, 
