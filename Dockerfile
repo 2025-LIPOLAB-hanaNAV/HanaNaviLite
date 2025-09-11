@@ -1,85 +1,68 @@
-# HanaNaviLite - 경량화 RAG 챗봇 시스템
-# Multi-stage build for optimized production image
+# syntax=docker/dockerfile:1.6
 
-# Stage 1: Python dependencies and app
-FROM python:3.11-slim as python-base
-
-# 환경변수 설정
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# 시스템 패키지 설치 (백엔드 API용 최소화)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    git \
-    tesseract-ocr \
-    tesseract-ocr-kor \
-    tesseract-ocr-eng \
-    && rm -rf /var/lib/apt/lists/*
-
-# 작업 디렉터리 설정
-WORKDIR /app
-
-# Python 의존성 설치
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# 애플리케이션 코드 복사
-COPY app/ ./app/
-COPY version.py .
-COPY .env.example .env
-
-# 데이터 디렉터리 생성
-RUN mkdir -p data models uploads
-
-# Stage 2: Node.js for React build
-FROM node:18-alpine as react-build
-
-WORKDIR /ui
+# ---------- UI build stage ----------
+FROM node:20-bullseye AS ui-builder
+WORKDIR /build/ui
 COPY ui/chatbot-react/package*.json ./
-RUN npm ci
-
-COPY ui/chatbot-react/ ./
+RUN npm ci --no-audit --no-fund
+COPY ui/chatbot-react ./
 RUN npm run build
 
-# Stage 3: Final production image
-FROM python:3.11-slim as production
+# ---------- Python app stage ----------
+FROM python:3.10-slim-bullseye AS app
 
-# 환경변수
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    VIRTUAL_ENV=/opt/venv
 
-# 시스템 패키지 (런타임만)
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# System dependencies: poppler-utils(pdftotext), tesseract-ocr (for image OCR), and libs
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git curl ca-certificates \
+        poppler-utils \
+        tesseract-ocr \
+        libgl1 \
+        libglib2.0-0 \
+        build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Python 환경 복사
-COPY --from=python-base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=python-base /usr/local/bin /usr/local/bin
+# Python deps
+COPY requirements.txt ./
+RUN python -m venv "$VIRTUAL_ENV" && . "$VIRTUAL_ENV/bin/activate" && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# 애플리케이션 복사
-COPY --from=python-base /app .
+# Copy source
+COPY . .
 
-# React 빌드 결과 복사 (Nginx 또는 정적 파일 서빙용)
-COPY --from=react-build /ui/dist ./ui/dist
+# Copy built UI
+COPY --from=ui-builder /build/ui/dist /app/ui/chatbot-react/dist
 
-# 헬스체크 (모델 로딩 시간 고려)
-HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=3 \
-    CMD curl -f http://localhost:8011/api/v1/health || exit 1
+# Prefetch sentence-transformers embedding model into image (optional)
+# Set ARG to allow skipping in low-network environments
+ARG PREFETCH_EMBEDDING=1
+ENV HF_HOME=/root/.cache/huggingface
+RUN if [ "$PREFETCH_EMBEDDING" = "1" ]; then \
+      python - <<'PY'
+from sentence_transformers import SentenceTransformer
+import os
+model = os.environ.get('EMBEDDING_MODEL','dragonkue/snowflake-arctic-embed-l-v2.0-ko')
+print('Prefetching embedding model:', model)
+SentenceTransformer(model)
+PY
+    ; fi
 
-# 포트 노출
-EXPOSE 8011
+# Ensure runtime directories
+RUN mkdir -p /app/data /app/uploads /app/models /app/logs && \
+    chmod -R 775 /app/data /app/uploads /app/models /app/logs
 
-# 실행 사용자 생성 (호스트와 동일한 UID 사용)
-RUN useradd -m -u 1008 hananavilite
-RUN chown -R hananavilite:hananavilite /app
-USER hananavilite
+# Expose API port (default 8020)
+ENV API_PORT=8020
+EXPOSE 8020
 
-# 실행 명령어
-CMD ["python", "-m", "app.main"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8020"]
+

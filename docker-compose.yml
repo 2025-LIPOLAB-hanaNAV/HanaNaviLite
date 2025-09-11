@@ -2,10 +2,12 @@
 services:
   # HanaNaviLite 메인 애플리케이션
   hananavilite:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: hananavilite-app
     ports:
-      - "8011:8011"
+      - "8020:8020"
     volumes:
       - ./data:/app/data
       - ./models:/app/models
@@ -20,7 +22,7 @@ services:
       - DATABASE_URL=sqlite:///data/hananavilite.db
       - LOG_LEVEL=INFO
       - NVIDIA_VISIBLE_DEVICES=all
-      - API_PORT=8011
+      - API_PORT=8020
     extra_hosts:
       - "host-gateway:host-gateway"
     depends_on:
@@ -52,7 +54,9 @@ services:
   # 사용법: docker-compose --profile ollama-container up -d
   # 주의: 현재는 로컬 Ollama(11435)를 사용하므로 이 컨테이너는 기본적으로 실행되지 않음
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
     container_name: hananavilite-ollama
     ports:
       - "11434:11434"

@@ -1,0 +1,40 @@
+services:
+  hananavilite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hananavilite-app
+    ports:
+      - "8020:8020"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDING_MODEL=dragonkue/snowflake-arctic-embed-l-v2.0-ko
+      - LLM_MODEL=gemma3:12b-it-qat
+      - DATABASE_URL=sqlite:///data/hananavilite.db
+      - LOG_LEVEL=INFO
+      - API_PORT=8020
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - ollama
+    networks:
+      - hananavilite-network
+
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    container_name: hananavilite-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - hananavilite-network
+
+networks:
+  hananavilite-network:
+    driver: bridge
+
