@@ -259,6 +259,8 @@ async def send_message(session_id: str, request: SendMessageRequest):
                     "confidence": decision_result["confidence"],
                     "intent": decision_result["intent_type"],
                     "requires_search": decision_result["requires_search"],
+                    # 실제 검색 결과 연동 전까지 기본값 0
+                    "results_count": 0,
                     "reasoning": decision_result["reasoning"],
                     "decision_method": "SearchDecisionAgent"
                 }

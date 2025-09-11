@@ -19,6 +19,11 @@ class ChatModeClient:
         self.mode_configs = {
             "quick": {
                 "model": "gemma3:12b-it-qat",  # 빠른 응답용 경량 모델
+                "backup_models": [
+                    "llama3.1:8b-instruct",
+                    "gemma2:9b-instruct",
+                    "mistral:7b-instruct"
+                ],
                 "temperature": 0.7,
                 "max_tokens": 512,
                 "system_prompt": """당신은 빠른 응답을 제공하는 친근한 사내 도우미입니다.
@@ -34,6 +39,11 @@ class ChatModeClient:
             },
             "precise": {
                 "model": "gpt-oss:20b",  # 정밀한 추론용 대형 모델  
+                "backup_models": [
+                    "llama3.1:8b-instruct",
+                    "gemma2:9b-instruct",
+                    "mistral:7b-instruct"
+                ],
                 "temperature": 0.3,
                 "max_tokens": 1024,
                 "system_prompt": """당신은 정밀한 검증과 상세한 분석을 제공하는 전문 지식베이스 도우미입니다.
@@ -57,6 +67,11 @@ class ChatModeClient:
             },
             "summary": {
                 "model": "gemma3:12b-it-qat",  # 요약에 적합한 모델
+                "backup_models": [
+                    "llama3.1:8b-instruct",
+                    "gemma2:9b-instruct",
+                    "mistral:7b-instruct"
+                ],
                 "temperature": 0.2,
                 "max_tokens": 256,
                 "system_prompt": """당신은 긴 텍스트를 핵심만 간추려서 요약하는 전문가입니다.
@@ -120,6 +135,25 @@ class ChatModeClient:
             
             # 시스템 프롬프트 구성
             system_prompt = config["system_prompt"]
+
+            # 게시판/첨부 기반 지식베이스 정책 및 결과 부재 처리 규칙 주입
+            results_count = 0
+            requires_search = False
+            intent = None
+            if search_context:
+                results_count = int(search_context.get("results_count", 0) or 0)
+                requires_search = bool(search_context.get("requires_search", False))
+                intent = search_context.get("intent")
+
+            kb_policy = (
+                "\n[지식베이스 정책]\n"
+                "- 내부 지식은 '게시판 게시물 + 첨부파일'에 기반합니다.\n"
+                "- 검색결과개수: {rc}. 결과가 0이면 추측하지 말고, 다음을 반드시 포함하세요:\n"
+                "  1) '관련 게시물이나 첨부파일에서 정보를 찾지 못했습니다.'라는 안내\n"
+                "  2) 재질문 가이드(키워드, 기간/부서 범위, 문서 유형 제안)\n"
+                "  3) 필요 시 담당 부서/채널 안내(정중하고 간결하게)\n"
+                "- 결과가 존재하면, 게시물/첨부에서 확인된 사실만 근거 기반으로 답하고, 허위 정보는 포함하지 마세요.\n"
+            ).format(rc=results_count)
             
             # 컨텍스트 정보 추가 (내부 정보만 - 사용자에게 노출되지 않음)
             internal_context = ""
@@ -129,38 +163,107 @@ class ChatModeClient:
             # 최종 프롬프트 구성
             if mode == "summary":
                 # 요약 모드는 다른 구조 사용
-                prompt = f"""{system_prompt}
+                prompt = f"""{system_prompt}{kb_policy}
 
 다음 내용을 요약해주세요:
 {user_message}
 
 요약:"""
             else:
-                prompt = f"""{system_prompt}{internal_context}
+                prompt = f"""{system_prompt}{kb_policy}{internal_context}
 
 사용자 질문: {user_message}
 
 답변:"""
             
-            # LLM 호출 - Ollama API 직접 호출
-            payload = {
-                "model": config["model"],  # 모드별 모델 사용
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": config["temperature"],
-                    "num_ctx": config["max_tokens"]
+            # 1) 권장: Chat API 우선 사용
+            try:
+                chat_messages = [
+                    {"role": "system", "content": system_prompt + kb_policy},
+                ]
+                if mode == "summary":
+                    chat_messages.append({
+                        "role": "user",
+                        "content": f"다음 내용을 요약해주세요:\n{user_message}\n\n요약:",
+                    })
+                else:
+                    # 내부 컨텍스트는 system에 이미 포함, 사용자 메시지는 별도
+                    chat_messages.append({
+                        "role": "user",
+                        "content": f"사용자 질문: {user_message}\n\n답변:",
+                    })
+
+                payload_chat = {
+                    "model": config["model"],
+                    "messages": chat_messages,
+                    "stream": False,
+                    "options": {
+                        "temperature": config["temperature"],
+                        # 출력 최대 토큰 수
+                        "num_predict": config["max_tokens"],
+                    },
                 }
-            }
-            
-            response = await client._request("POST", "/api/generate", json=payload)
-            response_data = response.json()
-            
-            response_text = response_data.get("response") or response_data.get("message") or ""
-            if not response_text:
-                return f"죄송합니다. {mode} 모드에서 응답을 생성할 수 없습니다."
-            
-            return response_text.strip()
+                response = await client._request("POST", "/api/chat", json=payload_chat)
+                data = response.json()
+                text = data.get("message") or data.get("response") or data.get("content") or ""
+                if text:
+                    return text.strip()
+            except Exception as e_chat:
+                logger.warning(f"Chat API failed for model {config['model']}: {e_chat}")
+
+            # 2) 폴백: Generate API (옵션 최소화, num_predict만 지정)
+            try:
+                payload_gen = {
+                    "model": config["model"],
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": config["temperature"],
+                        "num_predict": config["max_tokens"],
+                    },
+                }
+                response = await client._request("POST", "/api/generate", json=payload_gen)
+                data = response.json()
+                text = data.get("response") or data.get("message") or ""
+                if text:
+                    return text.strip()
+            except Exception as e_gen:
+                logger.warning(f"Generate API failed for model {config['model']}: {e_gen}")
+
+            # 3) 백업 모델 폴백 시도 (설치된 모델만)
+            backups = config.get("backup_models", [])
+            for bmodel in backups:
+                try:
+                    if hasattr(client, "show_model"):
+                        exists = await client.show_model(bmodel)
+                        if not exists:
+                            continue
+                    payload_b = {
+                        "model": bmodel,
+                        "messages": [
+                            {"role": "system", "content": system_prompt + kb_policy},
+                            {"role": "user", "content": f"사용자 질문: {user_message}\n\n답변:"},
+                        ],
+                        "stream": False,
+                        "options": {
+                            "temperature": config["temperature"],
+                            "num_predict": config["max_tokens"],
+                        },
+                    }
+                    response = await client._request("POST", "/api/chat", json=payload_b)
+                    data = response.json()
+                    text = data.get("message") or data.get("response") or data.get("content") or ""
+                    if text:
+                        logger.info(f"Fell back to backup model: {bmodel}")
+                        return text.strip()
+                except Exception as e_b:
+                    logger.warning(f"Backup model failed ({bmodel}): {e_b}")
+
+            # 4) 최종 폴백: 사과 메시지
+            return (
+                f"죄송합니다. {mode} 모드에서 일시적인 모델 오류가 발생했습니다. "
+                "잠시 후 다시 시도하시거나 다른 모드를 선택해 주세요."
+            )
             
         except Exception as e:
             logger.error(f"ChatModeClient 오류 (mode: {mode}): {e}")
