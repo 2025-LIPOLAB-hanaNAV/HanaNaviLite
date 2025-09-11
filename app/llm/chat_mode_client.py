@@ -20,9 +20,8 @@ class ChatModeClient:
             "quick": {
                 "model": "gemma3:12b-it-qat",  # 빠른 응답용 경량 모델
                 "backup_models": [
-                    "llama3.1:8b-instruct",
-                    "gemma2:9b-instruct",
-                    "mistral:7b-instruct"
+                    "gemma3:27b",
+                    "gpt-oss:20b"
                 ],
                 "temperature": 0.7,
                 "max_tokens": 512,
@@ -40,9 +39,8 @@ class ChatModeClient:
             "precise": {
                 "model": "gpt-oss:20b",  # 정밀한 추론용 대형 모델  
                 "backup_models": [
-                    "llama3.1:8b-instruct",
-                    "gemma2:9b-instruct",
-                    "mistral:7b-instruct"
+                    "gemma3:27b",
+                    "gemma3:12b-it-qat"
                 ],
                 "temperature": 0.3,
                 "max_tokens": 1024,
@@ -68,9 +66,8 @@ class ChatModeClient:
             "summary": {
                 "model": "gemma3:12b-it-qat",  # 요약에 적합한 모델
                 "backup_models": [
-                    "llama3.1:8b-instruct",
-                    "gemma2:9b-instruct",
-                    "mistral:7b-instruct"
+                    "gemma3:27b",
+                    "gpt-oss:20b"
                 ],
                 "temperature": 0.2,
                 "max_tokens": 256,
