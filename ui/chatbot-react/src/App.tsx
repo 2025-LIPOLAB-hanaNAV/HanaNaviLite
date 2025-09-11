@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AppShell } from './components/AppShell';
 import { HomePage } from './components/HomePage';
 import { ChatPage } from './components/ChatPage';
@@ -48,6 +48,31 @@ export default function App() {
     setShowEvidencePanel(true);
     console.log('Evidence clicked:', evidence);
   };
+
+  // URL 해시와 뷰 상태 연동 (#/chat 등)
+  const validViews = useMemo(() => new Set(['home', 'chat', 'saved', 'documents', 'admin']), []);
+  useEffect(() => {
+    const readHash = () => {
+      const h = window.location.hash.replace(/^#\/?/, '');
+      if (h && validViews.has(h)) {
+        setCurrentView(h);
+      }
+    };
+    // 초기 로드 시 해시 반영
+    readHash();
+    // 브라우저 뒤/앞 이동 시 반영
+    const onHashChange = () => readHash();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [validViews]);
+
+  // 뷰가 바뀔 때 URL 해시 업데이트
+  useEffect(() => {
+    const currentHash = window.location.hash.replace(/^#\/?/, '');
+    if (currentHash !== currentView) {
+      window.history.replaceState(null, '', `#/${currentView}`);
+    }
+  }, [currentView]);
 
   const renderCurrentView = () => {
     switch (currentView) {
