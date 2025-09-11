@@ -26,6 +26,8 @@ from app.conversation.dialog_state import (
     DialogContext
 )
 from app.llm.ollama_client import get_ollama_client
+from app.llm.chat_mode_client import get_chat_mode_client
+from app.conversation.search_decision_agent import SearchDecisionAgent
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,7 @@ class SendMessageRequest(BaseModel):
     search_engine_type: str = Field(default="hybrid")  # hybrid, vector, ir
     include_context: bool = Field(default=True)
     max_context_turns: int = Field(default=3, ge=1, le=5)
+    chat_mode: str = Field(default="quick")  # quick, precise, summary
 
 
 class SendMessageResponse(BaseModel):
@@ -211,68 +214,78 @@ async def send_message(session_id: str, request: SendMessageRequest):
             turn_number
         )
         
-        # 컨텍스트 인식 검색 수행 (실제 검색 엔진 연동 필요)
+        # SearchDecisionAgent로 의도 분류
         search_results = []
         context_explanation = ""
         search_context_dict = None
         
         if request.include_context:
             try:
-                # IntentClassifier는 enhance_query_with_context 내부에서 호출됨
-                search_context = context_search.enhance_query_with_context(
-                    session_id,
-                    request.message,
-                    request.max_context_turns
+                # 이전 대화 맥락 구성
+                recent_turns = session_manager.get_session_turns(session_id, limit=2)
+                conversation_context = ""
+                if recent_turns:
+                    context_messages = []
+                    for turn in recent_turns[-2:]:  # 최근 2턴만
+                        context_messages.extend([
+                            f"사용자: {turn.user_message}",
+                            f"도우미: {turn.assistant_message}"
+                        ])
+                    conversation_context = "\n".join(context_messages[-4:])
+
+                # SearchDecisionAgent로 의도 분류
+                search_decision_agent = SearchDecisionAgent()
+                decision_result = await search_decision_agent.should_search(
+                    request.message, 
+                    conversation_context if conversation_context else None
                 )
 
                 search_context_dict = {
-                    "original_query": search_context.original_query,
-                    "enhanced_query": search_context.enhanced_query,
-                    "reference_type": search_context.reference_type,
-                    "confidence": search_context.confidence,
-                    "previous_queries": search_context.previous_queries,
-                    "mentioned_entities": search_context.mentioned_entities,
-                    "current_topics": search_context.current_topics,
-                    "intent": search_context.intent,
-                    "requires_search": search_context.requires_search,
+                    "original_query": request.message,
+                    "enhanced_query": request.message,
+                    "reference_type": "info_request" if decision_result["requires_search"] else "small_talk",
+                    "confidence": decision_result["confidence"],
+                    "intent": decision_result["intent_type"],
+                    "requires_search": decision_result["requires_search"],
+                    "reasoning": decision_result["reasoning"],
+                    "decision_method": "SearchDecisionAgent"
                 }
 
-                if not search_context.requires_search:
-                    context_explanation = "일상 대화로 판단되어 검색을 생략했습니다."
+                if not decision_result["requires_search"]:
+                    context_explanation = f"일상 대화로 판단되어 검색을 생략했습니다. (신뢰도: {decision_result['confidence']:.2f})"
                 else:
-                    context_explanation = (
-                        f"컨텍스트를 고려하여 검색을 수행했습니다. (참조 타입: {search_context.reference_type})"
-                    )
+                    context_explanation = f"정보 요청으로 판단하여 검색을 수행합니다. (신뢰도: {decision_result['confidence']:.2f})"
                     # 실제 검색은 여기서 수행되어야 함
-                    # search_results = actual_search_engine.search(search_context.enhanced_query)
+                    # search_results = actual_search_engine.search(request.message)
+
+                logger.info(f"SearchDecisionAgent 결과 - 질문: '{request.message}', 분류: {decision_result['intent_type']}, 검색필요: {decision_result['requires_search']}, 신뢰도: {decision_result['confidence']:.2f}")
 
             except Exception as e:
-                logger.warning(f"Context search failed, using fallback: {e}")
-                context_explanation = "기본 검색을 수행했습니다."
+                logger.error(f"SearchDecisionAgent failed: {e}")
+                # 폴백: 기본적으로 일상 대화로 처리
+                search_context_dict = {
+                    "original_query": request.message,
+                    "enhanced_query": request.message,
+                    "reference_type": "small_talk",
+                    "confidence": 0.5,
+                    "intent": "small_talk", 
+                    "requires_search": False,
+                    "reasoning": "에이전트 오류로 인한 기본값",
+                    "decision_method": "fallback"
+                }
+                context_explanation = "의도 분류 실패로 일반 대화로 처리합니다."
         
-        # LLM(Ollama) 호출 시도, 실패 시 모의 응답으로 폴백
+        # ChatModeClient를 사용한 LLM 호출
         try:
-            llm = get_ollama_client()
-            system_hint = "당신은 사내 지식베이스 도우미입니다. 간결하고 정확하게 한국어로 답하세요."
-            context_hint = ""
-            if search_context_dict:
-                context_hint = (
-                    f"\n[컨텍스트]\n의도: {search_context_dict.get('intent')}\n"
-                    f"연관도: {search_context_dict.get('confidence')}\n"
-                    f"강화쿼리: {search_context_dict.get('enhanced_query')}\n"
-                )
-            if dialog_context.current_topics:
-                topic_names = ", ".join([t.name for t in dialog_context.current_topics])
-                context_hint += f"현재 주제: {topic_names}\n"
-
-            prompt = (
-                f"{system_hint}{context_hint}\n\n"
-                f"[질문]\n{request.message}\n"
+            chat_mode_client = get_chat_mode_client()
+            
+            # ChatModeClient로 응답 생성 (맥락은 이미 위에서 구성됨)
+            assistant_message = await chat_mode_client.generate_response(
+                mode=request.chat_mode,
+                user_message=request.message,
+                conversation_context=conversation_context if 'conversation_context' in locals() and conversation_context else None,
+                search_context=search_context_dict
             )
-            llm_resp = await llm.generate(prompt)
-            assistant_message = llm_resp.get("response") or llm_resp.get("message") or ""
-            if not assistant_message:
-                assistant_message = "죄송합니다. 현재 답변을 생성할 수 없습니다."
         except Exception as e:
             logger.error(f"LLM generation failed, fallback to template: {e}")
             assistant_message = await _generate_assistant_response(

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -141,9 +143,27 @@ export function AnswerCard({
         <div className="flex items-center gap-2">
           <h3 className="font-medium">요약</h3>
         </div>
-        <p className="leading-relaxed text-foreground">
-          {summary}
-        </p>
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 last:mb-0 space-y-1">{children}</ol>,
+              li: ({ children }) => <li className="text-sm">{children}</li>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              em: ({ children }) => <em className="italic">{children}</em>,
+              code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>,
+              pre: ({ children }) => <pre className="bg-muted p-3 rounded-md overflow-x-auto text-sm">{children}</pre>,
+              blockquote: ({ children }) => <blockquote className="border-l-4 border-muted pl-4 italic">{children}</blockquote>,
+              h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+              h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+              h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+            }}
+          >
+            {summary}
+          </ReactMarkdown>
+        </div>
       </div>
 
       <Separator />
@@ -233,12 +253,30 @@ export function AnswerCard({
             </div>
             
             <Card className="p-4 bg-muted/30">
-              <p className={cn(
-                "text-sm leading-relaxed text-muted-foreground",
+              <div className={cn(
+                "text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none dark:prose-invert",
                 !expandedSections.preview && "line-clamp-3"
               )}>
-                {preview}
-              </p>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside mb-2 last:mb-0 space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="text-sm">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>,
+                    pre: ({ children }) => <pre className="bg-muted p-3 rounded-md overflow-x-auto text-sm">{children}</pre>,
+                    blockquote: ({ children }) => <blockquote className="border-l-4 border-muted pl-4 italic">{children}</blockquote>,
+                    h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                  }}
+                >
+                  {preview}
+                </ReactMarkdown>
+              </div>
             </Card>
           </div>
         </>
