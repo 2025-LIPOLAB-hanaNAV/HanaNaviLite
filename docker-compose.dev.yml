@@ -10,7 +10,7 @@ services:
     environment:
       - LOG_LEVEL=DEBUG
       - PYTHONPATH=/app
-    command: ["python", "-m", "app.main", "--reload"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --reload-exclude /app/data
     
   # 개발용 PostgreSQL (SQLite 대신 사용 가능)
   postgres:

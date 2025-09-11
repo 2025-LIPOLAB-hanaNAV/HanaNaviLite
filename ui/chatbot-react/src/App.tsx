@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { HomePage } from './components/HomePage';
 import { ChatPage } from './components/ChatPage';
@@ -18,10 +19,14 @@ interface EvidenceItem {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('home');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [showEvidencePanel, setShowEvidencePanel] = useState(false);
+
+  // Get current view from URL path
+  const currentView = location.pathname === '/' ? 'home' : location.pathname.substring(1);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -29,17 +34,17 @@ export default function App() {
   };
 
   const handleSearch = (query: string, files?: File[]) => {
-    setCurrentView('chat');
+    navigate('/chat');
     console.log('Search:', query, files);
   };
 
   const handleQuestionClick = (question: string) => {
-    setCurrentView('chat');
+    navigate('/chat');
     console.log('Question clicked:', question);
   };
 
   const handlePresetClick = (preset: any) => {
-    setCurrentView('chat');
+    navigate('/chat');
     console.log('Preset clicked:', preset);
   };
 
@@ -49,43 +54,8 @@ export default function App() {
     console.log('Evidence clicked:', evidence);
   };
 
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case 'home':
-        return (
-          <HomePage
-            onSearch={handleSearch}
-            onQuestionClick={handleQuestionClick}
-            onPresetClick={handlePresetClick}
-          />
-        );
-      case 'chat':
-        return (
-          <ChatPage
-            onEvidenceClick={handleEvidenceClick}
-          />
-        );
-      case 'saved':
-        return (
-          <SavedDestinations
-            onDestinationClick={(dest) => console.log('Destination clicked:', dest)}
-            onRerunJourney={(dest) => {
-              setCurrentView('chat');
-              console.log('Rerun journey:', dest);
-            }}
-          />
-        );
-      case 'documents':
-        return (
-          <DocumentViewer />
-        );
-      case 'admin':
-        return (
-          <AdminConsole />
-        );
-      default:
-        return null;
-    }
+  const handleViewChange = (view: string) => {
+    navigate(view === 'home' ? '/' : `/${view}`);
   };
 
   const renderRightPanelContent = () => {
@@ -103,13 +73,37 @@ export default function App() {
     <div className="min-h-screen text-foreground" style={{ background: 'var(--background)' }}>
       <AppShell
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         isDark={isDarkMode}
         onThemeToggle={toggleTheme}
         showRightPanel={showEvidencePanel}
         rightPanelContent={renderRightPanelContent()}
       >
-        {renderCurrentView()}
+        <Routes>
+          <Route path="/" element={
+            <HomePage
+              onSearch={handleSearch}
+              onQuestionClick={handleQuestionClick}
+              onPresetClick={handlePresetClick}
+            />
+          } />
+          <Route path="/chat" element={
+            <ChatPage
+              onEvidenceClick={handleEvidenceClick}
+            />
+          } />
+          <Route path="/saved" element={
+            <SavedDestinations
+              onDestinationClick={(dest) => console.log('Destination clicked:', dest)}
+              onRerunJourney={(dest) => {
+                navigate('/chat');
+                console.log('Rerun journey:', dest);
+              }}
+            />
+          } />
+          <Route path="/documents" element={<DocumentViewer />} />
+          <Route path="/admin" element={<AdminConsole />} />
+        </Routes>
       </AppShell>
     </div>
   );

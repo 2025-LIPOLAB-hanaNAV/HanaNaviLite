@@ -15,24 +15,29 @@
 
 ---
 
-## 🏗️ **아키텍처**
+## 🏗️ **올인원 아키텍처**
 
 ```
-[High-Fidelity React UI] ──> [FastAPI Core] ──> [Hybrid Search Engine]
-         │                           │                    │
-    [Radix UI]                       │                    ├─> SQLite FTS5 (IR)
-    [Tailwind CSS]                   │                    └─> FAISS (Vector)
-    [Evidence Panel]                 │
-    [Quality Dashboard]              ├─> [ETL Pipeline] ──> [File Parser]
-                                     └─> [LLM Service] ──> [Ollama + Gemma3]
+[올인원 Docker 컨테이너]
+├── [React UI 빌드된 정적 파일]
+├── [FastAPI 백엔드 서버] ──> [Hybrid Search Engine]
+│   └── /ui 경로에서 프론트엔드 서빙    ├─> SQLite FTS5 (IR)
+│                                     └─> FAISS (Vector + GPU)
+├── [ETL Pipeline] ──> [Multi-format Parser]
+└── [LLM Service] ──> [Ollama + Gemma3]
 ```
+
+**🎯 핵심 특징:**
+- **단일 컨테이너**: 백엔드 + 프론트엔드 통합
+- **GPU 최적화**: RTX 5080 자동 감지 및 활용
+- **올인원 접속**: 하나의 URL로 모든 기능 이용
 
 ### **핵심 스택**
-*   **FastAPI**: 통합 백엔드 API
-*   **SQLite**: 통합 데이터베이스 (메타데이터 + IR + 캐시)
-*   **FAISS**: 벡터 검색 엔진
+*   **FastAPI**: 통합 백엔드 API + 정적 파일 서빙
+*   **SQLite**: 통합 데이터베이스 (메타데이터 + FTS5 + 캐시)
+*   **FAISS**: GPU 가속 벡터 검색 엔진
 *   **Ollama**: LLM 서빙 (Gemma3 12B)
-*   **React**: 고급 프론트엔드 UI (Radix UI, Tailwind CSS 기반)
+*   **React**: 빌드된 SPA (올인원 통합)
 
 ---
 
@@ -40,46 +45,44 @@
 
 ### **환경 요구사항**
 *   **권장**: 16GB+ RAM, 8core+ CPU
-*   **소프트웨어**: Python 3.11+, Node.js 16+, Docker
-*   **LLM 서버**: Ollama 서버 (로컬 또는 Docker)
+*   **GPU**: NVIDIA GPU 지원 (RTX 5080 최적화)
+*   **소프트웨어**: Docker, Docker Compose
+*   **LLM 서버**: Ollama 서버 (로컬 권장)
 
 ### **설치 및 실행 (Makefile 사용)**
 
-**1. 전체 시스템 시작 (Docker)**
+**올인원 Docker 컨테이너로 간편 실행**
 
 ```bash
-# Docker 이미지 빌드 및 컨테이너 실행
-make docker-up
+# 컨테이너 빌드 및 실행
+docker-compose up -d
 
-# 필요한 LLM 모델 다운로드 (최초 1회)
-make pull-model
+# 또는 재빌드가 필요한 경우
+docker-compose down
+docker-compose build
+docker-compose up -d
 ```
 
-**2. 로컬 개발 환경 실행**
-
-```bash
-# Python/Node.js 의존성 설치
-make install
-
-# 개발 서버 실행 (API + UI)
-make dev
-```
+**✨ GPU 가속 지원**
+- RTX 5080 GPU 자동 감지 및 사용
+- 임베딩 모델 로딩 시간 대폭 단축
+- CUDA 최적화된 배치 처리
 
 **🎯 접속 주소:**
-*   **🤖 챗봇 UI (로컬)**: http://localhost:5174
-*   **🐳 챗봇 UI (Docker)**: http://localhost:8001/ui/
-*   **📡 API 서버**: http://localhost:8001
-*   **📚 API 문서**: http://localhost:8001/docs
+*   **🤖 챗봇 UI**: http://localhost:8011/ui
+*   **📡 API 서버**: http://localhost:8011
+*   **📚 API 문서**: http://localhost:8011/docs
 
 ---
 
 ## ✅ **테스트 현황**
 
-**모든 테스트 통과 (105/105)**
+**시스템 안정성 확인**
 
-*   **단위/통합 테스트**: 모든 백엔드 기능 및 API 엔드포인트 테스트 완료.
-*   **성능 테스트**: 메모리 사용량 및 응답 시간 목표치 만족 (Ollama 외부 의존성 Mock 처리).
-*   **코드 품질**: `make lint` 실행 시 문제 없음.
+*   **GPU 가속**: RTX 5080을 활용한 임베딩 처리 최적화
+*   **올인원 통합**: 단일 컨테이너에서 안정적 동작 확인
+*   **포트 통일**: 모든 설정이 8011 포트로 통일
+*   **헬스체크**: 모델 로딩 시간을 고려한 안정적 헬스체크
 
 ---
 

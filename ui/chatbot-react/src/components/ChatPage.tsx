@@ -10,7 +10,7 @@ import { SearchBar } from './SearchBar';
 import { QualityDashboard } from './QualityDashboard';
 import { Icon } from './ui/Icon';
 import { cn } from './ui/utils';
-import { apiClient } from '../api/client';
+import { apiClient, ConversationSession, SendMessageResponse } from '../api/client';
 
 interface ChatMessage {
   id: string;
@@ -62,6 +62,8 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [currentSession, setCurrentSession] = useState<ConversationSession | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -99,8 +101,37 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     }
   ];
 
+  // Initialize conversation session
+  useEffect(() => {
+    const initializeSession = async () => {
+      setSessionLoading(true);
+      try {
+        const session = await apiClient.createSession({
+          title: `Chat Session - ${new Date().toLocaleDateString()}`,
+          max_turns: 20,
+          session_duration_hours: 24
+        });
+        setCurrentSession(session);
+      } catch (error) {
+        console.error('Failed to create session:', error);
+        // Set a fallback session to allow chat to work even if session creation fails
+        setCurrentSession({
+          session_id: 'fallback-session',
+          title: 'Fallback Session',
+          max_turns: 20,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString()
+        });
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+
+    initializeSession();
+  }, []);
+
   const handleSearch = async (query: string, files?: File[]) => {
-    if (!query.trim()) return;
+    if (!query.trim() || !currentSession) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -134,31 +165,38 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
         }
       }
 
-      // Query the API
-      const startTime = Date.now();
-      const response = await apiClient.query({
-        query,
-        mode: currentMode,
-        filters: filters.department !== 'all' || filters.dateRange !== 'all' || filters.documentType !== 'all' ? filters : undefined
+      // Send message using conversation API
+      const response: SendMessageResponse = await apiClient.sendMessage(currentSession.session_id, {
+        message: query,
+        search_engine_type: currentMode === 'quick' ? 'hybrid' : currentMode === 'precise' ? 'vector' : 'ir',
+        include_context: true,
+        max_context_turns: 3
       });
-      const responseTime = (Date.now() - startTime) / 1000;
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         type: 'assistant',
-        content: response.answer,
+        content: response.assistant_message,
         timestamp: new Date().toLocaleTimeString('ko-KR', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
         state: 'success',
-        evidenceCount: response.evidenceCount || response.sources.length,
-        responseTime: response.responseTime || responseTime,
+        evidenceCount: response.search_context ? 1 : 0,
+        responseTime: response.response_time_ms / 1000,
         hasPII: false,
-        isEvidenceLow: response.sources.length < 2
+        isEvidenceLow: !response.search_context
       };
 
       setMessages(prev => prev.slice(0, -1).concat(assistantMessage));
+      
+      // Update session info
+      try {
+        const updatedSession = await apiClient.getSession(currentSession.session_id);
+        setCurrentSession(updatedSession);
+      } catch (error) {
+        console.error('Failed to update session info:', error);
+      }
     } catch (error) {
       console.error('API Error:', error);
       const errorMessage: ChatMessage = {

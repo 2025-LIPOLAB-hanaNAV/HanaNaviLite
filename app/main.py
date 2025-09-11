@@ -53,15 +53,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"Database health check failed: {health_status}")
         raise RuntimeError("Database initialization failed")
     
-    # 임베딩 모델 로드
+    # 임베딩 모델 매니저 초기화 (지연 로딩)
     try:
         embedding_manager = get_embedding_manager()
-        embedding_manager.load_model()
-        logger.info("Embedding model loaded successfully.")
+        logger.info("Embedding manager initialized. Model will be loaded on first use.")
     except Exception as e:
-        logger.error(f"Failed to load embedding model during startup: {e}", exc_info=True)
-        # 모델 로딩 실패 시에도 서버는 시작될 수 있도록 처리 (선택적)
-        # raise RuntimeError("Failed to load essential models") from e
+        logger.error(f"Failed to initialize embedding manager: {e}", exc_info=True)
     
     logger.info(f"Database initialized: {health_status}")
     logger.info(f"Application started on {settings.api_host}:{settings.api_port}")
@@ -97,7 +94,40 @@ app.add_middleware(
 # 정적 파일 서빙 (React UI)
 ui_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui", "dist")
 if os.path.exists(ui_dist_path):
-    app.mount("/ui", StaticFiles(directory=ui_dist_path, html=True), name="ui")
+    from starlette.responses import FileResponse
+    from starlette.staticfiles import StaticFiles
+    import mimetypes
+    
+    # Mount static assets (CSS, JS, etc.) - this must come BEFORE the catch-all route
+    app.mount("/ui/assets", StaticFiles(directory=os.path.join(ui_dist_path, "assets")), name="ui-assets")
+    
+    @app.get("/ui/{full_path:path}")
+    async def serve_ui(full_path: str = ""):
+        """Serve React app with SPA fallback routing"""
+        # Handle empty path (root UI route)
+        if not full_path or full_path == "":
+            index_path = os.path.join(ui_dist_path, "index.html")
+            if os.path.exists(index_path):
+                return FileResponse(index_path, media_type="text/html")
+            else:
+                raise HTTPException(status_code=404, detail="UI not found")
+        
+        # Try to serve the requested file
+        file_path = os.path.join(ui_dist_path, full_path)
+        
+        # If it's a file and exists, serve it with proper MIME type
+        if os.path.isfile(file_path):
+            # Get MIME type
+            mime_type, _ = mimetypes.guess_type(file_path)
+            return FileResponse(file_path, media_type=mime_type)
+        
+        # For all other routes (SPA routes), serve index.html
+        index_path = os.path.join(ui_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path, media_type="text/html")
+        else:
+            raise HTTPException(status_code=404, detail="UI not found")
+    
     logger.info(f"UI static files mounted at /ui from {ui_dist_path}")
 else:
     logger.warning(f"UI dist directory not found at {ui_dist_path}")

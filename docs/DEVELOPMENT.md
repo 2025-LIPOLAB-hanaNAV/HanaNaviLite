@@ -12,31 +12,35 @@
 
 ---
 
-## 🏗️ **최종 아키텍처**
+## 🏗️ **올인원 아키텍처**
 
-### **컴포넌트 구조**
+### **단일 컨테이너 구조**
 
 ```mermaid
 graph TB
-    UI[React Frontend] --> Gateway[FastAPI Gateway]
-    Gateway --> Search[Hybrid Search Engine]
-    Gateway --> ETL[ETL Pipeline]
-    Gateway --> LLM[LLM Service]
+    Container[올인원 Docker 컨테이너] 
+    Container --> UI[React SPA 정적 파일]
+    Container --> FastAPI[FastAPI 서버]
+    
+    FastAPI --> Static["/ui 경로 정적 서빙"]
+    FastAPI --> API["/api/v1/* REST API"]
+    
+    API --> Search[Hybrid Search + GPU]
+    API --> ETL[ETL Pipeline]
+    API --> LLM[LLM Service]
     
     Search --> SQLite[(SQLite DB)]
-    Search --> FAISS[(FAISS Index)]
+    Search --> FAISS[(FAISS + RTX 5080)]
     
-    ETL --> Parser[File Parser]
-    ETL --> Embed[Embedding Service]
-    
-    LLM --> Ollama[Ollama Server]
+    LLM --> Ollama[External Ollama:11435]
 ```
 
-### **데이터 플로우**
+### **간소화된 데이터 플로우**
 
-1.  **인덱싱**: `게시글/파일 업로드 → ETL Pipeline → 파싱 → 청킹 → 임베딩 → FAISS/SQLite 저장`
-2.  **검색**: `사용자 질의 → 하이브리드 검색 → RRF 융합 → 재랭킹 → 컨텍스트 생성`
-3.  **응답**: `컨텍스트 + 질의 → LLM 추론 → 답변 생성 → 후처리 → 사용자 응답`
+1.  **인덱싱**: `파일 업로드 → GPU 가속 임베딩 → FAISS/SQLite 저장`
+2.  **검색**: `사용자 질의 → GPU 가속 하이브리드 검색 → RRF 융합`
+3.  **응답**: `컨텍스트 + 질의 → Ollama LLM → 실시간 스트리밍 답변`
+4.  **접속**: `단일 URL (localhost:8011/ui) → 모든 기능 이용`
 
 ---
 

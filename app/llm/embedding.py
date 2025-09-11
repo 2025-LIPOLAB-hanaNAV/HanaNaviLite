@@ -22,6 +22,7 @@ class EmbeddingManager:
         self.batch_size = settings.embedding_batch_size
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model: Optional[SentenceTransformer] = None
+        self._model_loaded = False
 
         # LRU cache for embeddings
         cache_size = getattr(settings, "embedding_cache_size", 0)
@@ -31,7 +32,7 @@ class EmbeddingManager:
             else self._encode_text
         )
         
-        logger.info(f"EmbeddingManager initialized - Model: {self.model_name}, Device: {self.device}")
+        logger.info(f"EmbeddingManager initialized - Model: {self.model_name}, Device: {self.device} (lazy loading enabled)")
     
     def load_model(self):
         """임베딩 모델 로드"""
@@ -64,14 +65,25 @@ class EmbeddingManager:
         return self._cached_encode(text)
             
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
-        """여러 텍스트에 대한 임베딩을 배치로 생성"""
+        """여러 텍스트에 대한 임베딩을 배치로 생성 (GPU 최적화)"""
         if self.model is None:
             self.load_model()
 
         if self.model is None:
             raise RuntimeError("Embedding model is not available.")
 
-        return np.array([self._cached_encode(t) for t in texts], dtype=np.float32)
+        # GPU 효율성을 위해 배치 처리 사용
+        if len(texts) <= self.batch_size:
+            return self.model.encode(texts, convert_to_numpy=True, batch_size=len(texts)).astype(np.float32)
+        
+        # 대량 텍스트의 경우 배치 단위로 처리
+        embeddings = []
+        for i in range(0, len(texts), self.batch_size):
+            batch = texts[i:i + self.batch_size]
+            batch_embeddings = self.model.encode(batch, convert_to_numpy=True, batch_size=len(batch))
+            embeddings.append(batch_embeddings)
+        
+        return np.vstack(embeddings).astype(np.float32)
 
 # 전역 인스턴스 (싱글톤 패턴)
 _embedding_manager: Optional[EmbeddingManager] = None

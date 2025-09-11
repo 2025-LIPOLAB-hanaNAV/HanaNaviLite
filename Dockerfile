@@ -69,12 +69,12 @@ COPY --from=python-base /app .
 # React 빌드 결과 복사 (Nginx 또는 정적 파일 서빙용)
 COPY --from=react-build /ui/dist ./ui/dist
 
-# 헬스체크
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8001/api/v1/health || exit 1
+# 헬스체크 (모델 로딩 시간 고려)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=3 \
+    CMD curl -f http://localhost:8011/api/v1/health || exit 1
 
 # 포트 노출
-EXPOSE 8001
+EXPOSE 8011
 
 # 실행 사용자 생성 (호스트와 동일한 UID 사용)
 RUN useradd -m -u 1008 hananavilite

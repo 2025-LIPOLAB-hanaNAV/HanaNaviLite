@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     faiss_ivfpq_m: int = 16 # IVFPQ 시 서브벡터 수
     
     # LLM (대규모 언어 모델) 설정
-    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11435") # Ollama 서버의 기본 URL
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434") # Ollama 서버의 기본 URL
     llm_model: str = os.getenv("LLM_MODEL", "gemma3:12b-it-qat") # 사용할 LLM 모델 이름
     llm_max_tokens: int = int(os.getenv("LLM_MAX_TOKENS", "2048")) # LLM 응답의 최대 토큰 수
     llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.1")) # LLM 응답의 다양성 (창의성) 제어 (0.0 ~ 1.0)
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     
     # FastAPI API 설정
     api_host: str = "0.0.0.0" # API 서버가 바인딩될 호스트 주소
-    api_port: int = 8001 # API 서버가 사용할 포트 번호
+    api_port: int = 8011 # API 서버가 사용할 포트 번호
     api_title: str = "HanaNaviLite API" # API 문서에 표시될 제목
     api_version: str = "1.0.0" # API 버전
     
