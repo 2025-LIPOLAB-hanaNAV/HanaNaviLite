@@ -205,8 +205,20 @@ class ChatModeClient:
                 }
                 response = await client._request("POST", "/api/chat", json=payload_chat)
                 data = response.json()
-                text = data.get("message") or data.get("response") or data.get("content") or ""
-                if text:
+                # Normalize chat response payloads
+                text = None
+                if isinstance(data, dict):
+                    msg = data.get("message")
+                    if isinstance(msg, dict):
+                        text = msg.get("content")
+                    elif isinstance(msg, str):
+                        text = msg
+                    if not text:
+                        # Some backends might use 'content' or 'response'
+                        cand = data.get("content") or data.get("response")
+                        if isinstance(cand, str):
+                            text = cand
+                if isinstance(text, str) and text.strip():
                     return text.strip()
             except Exception as e_chat:
                 logger.warning(f"Chat API failed for model {config['model']}: {e_chat}")
@@ -224,8 +236,12 @@ class ChatModeClient:
                 }
                 response = await client._request("POST", "/api/generate", json=payload_gen)
                 data = response.json()
-                text = data.get("response") or data.get("message") or ""
-                if text:
+                text = None
+                if isinstance(data, dict):
+                    cand = data.get("response") or data.get("message") or data.get("content")
+                    if isinstance(cand, str):
+                        text = cand
+                if isinstance(text, str) and text.strip():
                     return text.strip()
             except Exception as e_gen:
                 logger.warning(f"Generate API failed for model {config['model']}: {e_gen}")
@@ -252,8 +268,18 @@ class ChatModeClient:
                     }
                     response = await client._request("POST", "/api/chat", json=payload_b)
                     data = response.json()
-                    text = data.get("message") or data.get("response") or data.get("content") or ""
-                    if text:
+                    text = None
+                    if isinstance(data, dict):
+                        msg = data.get("message")
+                        if isinstance(msg, dict):
+                            text = msg.get("content")
+                        elif isinstance(msg, str):
+                            text = msg
+                        if not text:
+                            cand = data.get("content") or data.get("response")
+                            if isinstance(cand, str):
+                                text = cand
+                    if isinstance(text, str) and text.strip():
                         logger.info(f"Fell back to backup model: {bmodel}")
                         return text.strip()
                 except Exception as e_b:
