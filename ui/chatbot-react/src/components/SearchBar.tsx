@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Input } from './ui/input';
+import React, { useState, useRef, useEffect } from 'react';
+import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Icon } from './ui/Icon';
@@ -34,14 +34,25 @@ export function SearchBar({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [isComposing, setIsComposing] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSubmit = () => {
     if (query.trim() || attachedFiles.length > 0) {
       onSearch(query, attachedFiles.map(af => af.file));
       setQuery('');
       setAttachedFiles([]);
+      // reset textarea height
+      if (textAreaRef.current) {
+        textAreaRef.current.style.height = 'auto';
+      }
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    doSubmit();
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,9 +101,17 @@ export function SearchBar({
     return 'file-text';
   };
 
+  // auto-resize textarea when query changes
+  useEffect(() => {
+    const el = textAreaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(200, Math.max(48, el.scrollHeight))}px`;
+  }, [query]);
+
   return (
     <div className={cn("w-full max-w-4xl", className)}>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
         <div 
           ref={dropZoneRef}
           className={cn(
@@ -120,11 +139,21 @@ export function SearchBar({
           <div className="flex items-center p-6 gap-4">
             <Icon name="search" size={24} className="text-muted-foreground flex-shrink-0" />
             
-            <Input
+            <Textarea
+              ref={textAreaRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+                  e.preventDefault();
+                  doSubmit();
+                }
+              }}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              rows={1}
               placeholder={placeholder}
-              className="border-0 bg-transparent text-xl px-0 shadow-none focus-visible:ring-0 font-normal placeholder:text-muted-foreground/60 placeholder:font-normal py-2"
+              className="border-0 bg-transparent text-xl px-0 shadow-none focus-visible:ring-0 font-normal placeholder:text-muted-foreground/60 placeholder:font-normal py-2 leading-6 min-h-12"
               disabled={isLoading}
             />
             
