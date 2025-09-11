@@ -25,6 +25,7 @@ from app.conversation.dialog_state import (
     DialogState,
     DialogContext
 )
+from app.llm.ollama_client import get_ollama_client
 
 logger = logging.getLogger(__name__)
 
@@ -249,13 +250,37 @@ async def send_message(session_id: str, request: SendMessageRequest):
                 logger.warning(f"Context search failed, using fallback: {e}")
                 context_explanation = "기본 검색을 수행했습니다."
         
-        # 모의 응답 생성 (실제로는 LLM 서비스 호출)
-        assistant_message = await _generate_assistant_response(
-            request.message, 
-            search_results, 
-            dialog_context,
-            search_context_dict
-        )
+        # LLM(Ollama) 호출 시도, 실패 시 모의 응답으로 폴백
+        try:
+            llm = get_ollama_client()
+            system_hint = "당신은 사내 지식베이스 도우미입니다. 간결하고 정확하게 한국어로 답하세요."
+            context_hint = ""
+            if search_context_dict:
+                context_hint = (
+                    f"\n[컨텍스트]\n의도: {search_context_dict.get('intent')}\n"
+                    f"연관도: {search_context_dict.get('confidence')}\n"
+                    f"강화쿼리: {search_context_dict.get('enhanced_query')}\n"
+                )
+            if dialog_context.current_topics:
+                topic_names = ", ".join([t.name for t in dialog_context.current_topics])
+                context_hint += f"현재 주제: {topic_names}\n"
+
+            prompt = (
+                f"{system_hint}{context_hint}\n\n"
+                f"[질문]\n{request.message}\n"
+            )
+            llm_resp = await llm.generate(prompt)
+            assistant_message = llm_resp.get("response") or llm_resp.get("message") or ""
+            if not assistant_message:
+                assistant_message = "죄송합니다. 현재 답변을 생성할 수 없습니다."
+        except Exception as e:
+            logger.error(f"LLM generation failed, fallback to template: {e}")
+            assistant_message = await _generate_assistant_response(
+                request.message,
+                search_results,
+                dialog_context,
+                search_context_dict,
+            )
         
         # 응답 시간 계산
         response_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -342,6 +367,54 @@ async def get_conversation_history(
     except Exception as e:
         logger.error(f"Failed to get conversation history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@conversation_router.get("/sessions/{session_id}/turns")
+async def get_turns(session_id: str):
+    """프론트엔드 호환용: 세션의 턴 리스트 조회"""
+    try:
+        session_manager = get_session_manager()
+        session = session_manager.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        turns = session_manager.get_session_turns(session_id)
+        return [
+            {
+                "turn_id": t.id,
+                "session_id": t.session_id,
+                "query": t.user_message,
+                "response": t.assistant_message,
+                "sources": t.search_results or [],
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "processing_time": t.response_time_ms,
+            }
+            for t in turns
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get turns: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AddTurnRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+
+
+@conversation_router.post("/sessions/{session_id}/turns")
+async def add_turn(session_id: str, req: AddTurnRequest):
+    """프론트엔드 호환용: 메시지 전송 후 하나의 턴 레코드 반환"""
+    sm_req = SendMessageRequest(message=req.query)
+    resp = await send_message(session_id, sm_req)  # type: ignore[arg-type]
+    return {
+        "turn_id": None,
+        "session_id": resp.session_id,
+        "query": resp.user_message,
+        "response": resp.assistant_message,
+        "sources": resp.search_context or {},
+        "created_at": datetime.utcnow().isoformat(),
+        "processing_time": resp.response_time_ms,
+    }
 
 
 @conversation_router.get("/sessions", response_model=SessionListResponse)
@@ -536,6 +609,22 @@ async def cleanup_expired_sessions(
         
     except Exception as e:
         logger.error(f"Failed to schedule cleanup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@conversation_router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """세션 삭제 (관련 데이터 포함)"""
+    try:
+        session_manager = get_session_manager()
+        deleted = session_manager.delete_session(session_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"message": "Session deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

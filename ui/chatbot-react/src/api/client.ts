@@ -165,11 +165,16 @@ class ApiClient {
 
   // Statistics Methods
   async getSystemStats(): Promise<SystemStats> {
-    return this.request<SystemStats>('/conversation/stats/system');
+    // Backend provides system status under admin and usage under stats
+    return this.request<SystemStats>('/admin/system_status');
   }
 
-  async getUsageStats(): Promise<UsageStats> {
-    return this.request<UsageStats>('/conversation/stats/usage');
+  async getUsageStats(params?: { period?: 'daily' | 'monthly' | 'total'; date?: string }): Promise<UsageStats> {
+    const searchParams = new URLSearchParams();
+    if (params?.period) searchParams.set('period', params.period);
+    if (params?.date) searchParams.set('date', params.date);
+    const q = searchParams.toString();
+    return this.request<UsageStats>(`/stats/usage${q ? '?' + q : ''}`);
   }
 
   // Health Check
@@ -182,7 +187,7 @@ class ApiClient {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${this.baseUrl}/upload/document`, {
+    const response = await fetch(`${this.baseUrl}/etl/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -196,13 +201,13 @@ class ApiClient {
 
   // Admin Methods
   async rebuildIndex(): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/admin/rebuild-index', {
+    return this.request<{ message: string }>('/admin/reindex_documents', {
       method: 'POST',
     });
   }
 
   async clearCache(): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/admin/clear-cache', {
+    return this.request<{ message: string }>('/admin/clear_cache', {
       method: 'POST',
     });
   }

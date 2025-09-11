@@ -92,7 +92,7 @@ app.add_middleware(
 
 
 # 정적 파일 서빙 (React UI)
-ui_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui", "dist")
+ui_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui", "chatbot-react", "dist")
 if os.path.exists(ui_dist_path):
     from starlette.responses import FileResponse
     from starlette.staticfiles import StaticFiles

@@ -609,6 +609,29 @@ class ConversationSessionManager:
         
         logger.info(f"Updated feedback for session {session_id}, turn {turn_number}")
 
+    def delete_session(self, session_id: str) -> int:
+        """세션 삭제 (연관된 턴/주제는 CASCADE로 삭제)
+
+        Args:
+            session_id: 세션 ID
+
+        Returns:
+            int: 삭제된 세션 수 (0 또는 1)
+        """
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM conversation_sessions WHERE session_id = ?",
+                (session_id,),
+            )
+            deleted = cursor.rowcount
+            conn.commit()
+        if deleted:
+            logger.info(f"Deleted conversation session {session_id}")
+        else:
+            logger.warning(f"No conversation session deleted for id {session_id}")
+        return deleted
+
 
 # 전역 인스턴스
 _session_manager = None

@@ -10,6 +10,7 @@ import { SearchBar } from './SearchBar';
 import { QualityDashboard } from './QualityDashboard';
 import { Icon } from './ui/Icon';
 import { cn } from './ui/utils';
+import apiClient from '../api/client';
 
 interface ChatMessage {
   id: string;
@@ -61,6 +62,7 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -125,26 +127,46 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     
     setMessages(prev => [...prev, loadingMessage]);
 
-    // Simulate API call
-    setTimeout(() => {
+    // Call backend API
+    try {
+      let sid = sessionId;
+      if (!sid) {
+        const session = await apiClient.createSession({ title: '대화' });
+        sid = session.session_id;
+        setSessionId(sid);
+      }
+
+      const turn = await apiClient.addTurn(sid!, query);
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         type: 'assistant',
-        content: '육아휴직 급여 지급 기준에 대해 안내드리겠습니다.\n\n근속 6개월 이상의 정규직 직원이 육아휴직을 신청할 수 있으며, 최대 1년까지 가능합니다. 육아휴직 기간 중에는 기본급의 40%를 육아휴직급여로 지급하며, 매월 25일에 계좌로 입금됩니다.\n\n신청 절차는 휴직 시작일 30일 전까지 인사팀에 신청서를 제출하시면 됩니다.',
+        content: String((turn as any).response ?? ''),
         timestamp: new Date().toLocaleTimeString('ko-KR', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
         state: 'success',
-        evidenceCount: 2,
-        responseTime: 2.7,
-        hasPII: false,
-        isEvidenceLow: false
+        evidenceCount: Array.isArray((turn as any).sources) ? (turn as any).sources.length : undefined,
+        responseTime: (turn as any).processing_time,
       };
 
       setMessages(prev => prev.slice(0, -1).concat(assistantMessage));
+    } catch (e) {
+      console.error('Chat API failed', e);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 2).toString(),
+        type: 'assistant',
+        content: '죄송합니다. 답변 생성 중 문제가 발생했습니다.',
+        timestamp: new Date().toLocaleTimeString('ko-KR', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        state: 'warning',
+      };
+      setMessages(prev => prev.slice(0, -1).concat(errorMessage));
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleRetry = () => {
