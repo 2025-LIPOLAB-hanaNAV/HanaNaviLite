@@ -1,20 +1,20 @@
-from typing import List
+from typing import List, Optional, Tuple
 
 
-def _import_pdf_reader():
+def _import_candidates() -> List[Tuple[str, Optional[object]]]:
     """Return a PdfReader class from available backends (pypdf or PyPDF2)."""
-    # Try pypdf first
-    try:  # pragma: no cover - runtime environment dependent
-        from pypdf import PdfReader  # type: ignore
-        return PdfReader
-    except Exception:
-        pass
-    # Fallback to PyPDF2 (declared in requirements.txt)
+    candidates: List[Tuple[str, Optional[object]]] = []
     try:  # pragma: no cover
-        from PyPDF2 import PdfReader  # type: ignore
-        return PdfReader
+        from pypdf import PdfReader as PypdfReader  # type: ignore
+        candidates.append(("pypdf", PypdfReader))
     except Exception:
-        return None
+        candidates.append(("pypdf", None))
+    try:  # pragma: no cover
+        from PyPDF2 import PdfReader as PyPDF2Reader  # type: ignore
+        candidates.append(("PyPDF2", PyPDF2Reader))
+    except Exception:
+        candidates.append(("PyPDF2", None))
+    return candidates
 
 
 def parse_pdf(path: str) -> List[str]:
@@ -22,23 +22,44 @@ def parse_pdf(path: str) -> List[str]:
 
     Returns a list of per-page text strings. Returns empty list if parsing fails.
     """
-    PdfReader = _import_pdf_reader()
-    if not PdfReader:  # pragma: no cover
-        return []
-    try:
-        reader = PdfReader(path)
-        texts: List[str] = []
-        for page in getattr(reader, 'pages', []):
-            try:
-                raw = page.extract_text()  # type: ignore[attr-defined]
-                if raw is None:
-                    texts.append("")
+    cand = _import_candidates()
+    best_texts: List[str] = []
+    best_len = -1
+
+    def extract_with(reader_cls) -> List[str]:
+        if reader_cls is None:
+            return []
+        try:
+            reader = reader_cls(path)
+            pages = getattr(reader, 'pages', [])
+            out: List[str] = []
+            for page in pages:
+                try:
+                    raw = page.extract_text()  # type: ignore[attr-defined]
+                except Exception:
+                    raw = None
+                if not raw:
+                    out.append("")
                 else:
-                    # Normalize whitespace and NBSP
-                    cleaned = raw.replace('\u00A0', ' ').strip()
-                    texts.append(cleaned)
-            except Exception:
-                texts.append("")
-        return texts
-    except Exception:
+                    cleaned = (
+                        raw.replace('\u00A0', ' ')
+                           .replace('\x00', ' ')
+                           .replace('\r', '\n')
+                    )
+                    out.append(cleaned)
+            return out
+        except Exception:
+            return []
+
+    # Try all candidates and choose the one with the most characters
+    for name, cls in cand:
+        texts = extract_with(cls)
+        total = sum(len(t) for t in texts)
+        if total > best_len:
+            best_len = total
+            best_texts = texts
+
+    # Final cleanup: ensure at least one element if any content
+    if best_len <= 0:
         return []
+    return best_texts

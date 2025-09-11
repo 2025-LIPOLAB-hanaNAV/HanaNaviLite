@@ -109,11 +109,40 @@ class ETLPipeline:
             # 2) 파일 파싱
             logger.info(f"Parsing file: {file_name}")
             parser = self.parsers[file_ext]
-            full_text = "\n".join(parser(file_path))
+            page_texts = parser(file_path)
+            non_empty_pages = sum(1 for t in page_texts if t and t.strip())
+            total_chars = sum(len(t) for t in page_texts)
+            logger.info(f"Parse stats - pages: {len(page_texts)}, non_empty: {non_empty_pages}, chars: {total_chars}")
+            full_text = "\n".join(page_texts)
 
             # 3) 텍스트 청킹
             logger.info(f"Chunking text for document ID: {document_id}")
             chunks = self.text_processor.chunk_text(full_text, chunk_size=1000, overlap=100)
+
+            # Fallback: if chunker failed but we have text, do naive chunking by length
+            if not chunks and full_text and full_text.strip():
+                logger.warning(f"Primary chunker returned 0 chunks; falling back to naive chunking")
+                def naive_chunks(text: str, size: int = 1000, overlap: int = 100):
+                    parts = []
+                    i = 0
+                    n = max(size, 1)
+                    ov = max(min(overlap, n-1), 0)
+                    while i < len(text):
+                        end = min(len(text), i + n)
+                        segment = text[i:end]
+                        parts.append({
+                            'content': segment.strip(),
+                            'start_sentence': 0,
+                            'end_sentence': 0,
+                            'length': len(segment),
+                            'keywords': self.text_processor.extract_keywords(segment, max_keywords=10)
+                        })
+                        if end >= len(text):
+                            break
+                        i = end - ov
+                    return [p for p in parts if p['content']]
+
+                chunks = naive_chunks(full_text, size=1000, overlap=100)
 
             if not chunks:
                 logger.warning(f"No chunks created for document {document_id}. Skipping.")
