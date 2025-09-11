@@ -1,4 +1,9 @@
 from typing import List, Optional, Tuple
+import shutil
+import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _import_candidates() -> List[Tuple[str, Optional[object]]]:
@@ -60,6 +65,30 @@ def parse_pdf(path: str) -> List[str]:
             best_texts = texts
 
     # Final cleanup: ensure at least one element if any content
-    if best_len <= 0:
-        return []
-    return best_texts
+    if best_len > 0:
+        return best_texts
+
+    # Fallback 2: use 'pdftotext' CLI if available (poppler-utils)
+    try:
+        if shutil.which('pdftotext'):
+            # -layout preserves layout, -enc UTF-8 outputs UTF-8, output to stdout with '-' target
+            result = subprocess.run(
+                ['pdftotext', '-layout', '-enc', 'UTF-8', path, '-'],
+                capture_output=True,
+                check=False,
+                timeout=20
+            )
+            if result.returncode == 0:
+                text = result.stdout.decode('utf-8', errors='ignore')
+                if text and text.strip():
+                    # pdftotext separates pages with form-feed '\f'
+                    pages = [p.strip() for p in text.split('\f') if p and p.strip()]
+                    logger.info(f"pdftotext extracted chars={len(text)} pages={len(pages)}")
+                    return pages if pages else [text]
+            else:
+                logger.warning(f"pdftotext failed rc={result.returncode}: {result.stderr[:200]!r}")
+    except Exception as e:
+        logger.warning(f"pdftotext fallback error: {e}")
+
+    # Give up: return empty
+    return []
