@@ -1,8 +1,6 @@
 services:
   hananavilite:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hananavilite-app:offline
     container_name: hananavilite-app
     ports:
       - "8020:8020"
@@ -23,9 +21,7 @@ services:
       - hananavilite-network
 
   ollama:
-    build:
-      context: .
-      dockerfile: Dockerfile.ollama
+    image: hananavilite-ollama:offline
     container_name: hananavilite-ollama
     ports:
       - "11434:11434"
@@ -37,4 +33,3 @@ services:
 networks:
   hananavilite-network:
     driver: bridge
-
