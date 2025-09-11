@@ -32,6 +32,15 @@ type HybridResult = {
 
 export function DocumentSearch() {
   const API_BASE_URL = 'http://localhost:8020';
+  const [onlyMine, setOnlyMine] = useState(true);
+  const uploadToken = useMemo(() => {
+    let t = localStorage.getItem('upload_token');
+    if (!t) {
+      t = `up_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+      localStorage.setItem('upload_token', t);
+    }
+    return t;
+  }, []);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<HybridResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,7 +61,10 @@ export function DocumentSearch() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filters: fileTypeFilter !== 'all' ? { file_type: fileTypeFilter } : undefined,
+          filters: {
+            ...(fileTypeFilter !== 'all' ? { file_type: fileTypeFilter } : {}),
+            ...(onlyMine ? { upload_token: uploadToken } : {}),
+          },
         }),
       });
       const data = await res.json();
@@ -71,9 +83,12 @@ export function DocumentSearch() {
     try {
       const form = new FormData();
       form.append('file', files[0]);
-      const res = await fetch(`${API_BASE_URL}/api/v1/etl/upload`, {
+      const url = new URL(`${API_BASE_URL}/api/v1/etl/upload`);
+      url.searchParams.set('upload_token', uploadToken);
+      const res = await fetch(url.toString(), {
         method: 'POST',
         body: form,
+        headers: { 'X-Upload-Token': uploadToken },
       });
       const data = await res.json();
       if (res.ok) {
@@ -186,6 +201,10 @@ export function DocumentSearch() {
           <Button onClick={doSearch} disabled={isSearching} className="min-w-24">
             {isSearching ? '검색 중...' : '검색'}
           </Button>
+          <label className="flex items-center gap-2 text-sm ml-2">
+            <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} />
+            내 업로드만
+          </label>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => handleUpload(e.target.files)} />
@@ -241,6 +260,19 @@ export function DocumentSearch() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                          const text = r.snippet || r.content || '';
+                          if (text) {
+                            localStorage.setItem('prepopulate_chat', text);
+                            window.location.hash = '#/chat';
+                          }
+                        }}
+                      >
+                        채팅으로 보내기
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={async () => {
                           const sum = await summarize(r.snippet || r.content || '');
                           if (sum) alert(sum);
@@ -266,7 +298,26 @@ export function DocumentSearch() {
           </div>
         )}
       </div>
+      {/* Status Section */}
+      <div className="p-4 border-t bg-elevated">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              const url = new URL(`${API_BASE_URL}/api/v1/etl/status`);
+              if (onlyMine) url.searchParams.set('upload_token', uploadToken);
+              const res = await fetch(url.toString());
+              const data = await res.json();
+              const lines = (data?.items || []).map((it: any) => `${it.id} ${it.file_name} [${it.status}] ${it.processed_at ?? ''}`);
+              alert(lines.join('\n') || '항목 없음');
+            } catch (e) {
+              alert('상태 조회 실패');
+            }
+          }}
+        >
+          처리상태 조회
+        </Button>
+      </div>
     </div>
   );
 }
-

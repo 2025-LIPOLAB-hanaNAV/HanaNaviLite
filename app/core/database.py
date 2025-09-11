@@ -80,12 +80,30 @@ class DatabaseManager:
                     content TEXT,
                     summary TEXT,
                     keywords TEXT,
+                    uploader_session_id TEXT,
+                    uploader_user_id TEXT,
+                    upload_token TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     processed_at DATETIME,
                     status TEXT DEFAULT 'pending' -- 문서 처리 상태 (pending, processing, processed, failed)
                 );
             """)
+
+            # 호환성: 기존 DB에 누락된 컬럼 보강
+            def ensure_column(table: str, column: str, coltype: str):
+                cur.execute(f"PRAGMA table_info({table})")
+                cols = [row[1] for row in cur.fetchall()]
+                if column not in cols:
+                    try:
+                        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+                        logger.info(f"Added missing column {table}.{column}")
+                    except Exception as e:
+                        logger.warning(f"Failed to add column {table}.{column}: {e}")
+
+            ensure_column('documents', 'uploader_session_id', 'TEXT')
+            ensure_column('documents', 'uploader_user_id', 'TEXT')
+            ensure_column('documents', 'upload_token', 'TEXT')
 
             # FTS5 (Full-Text Search) 가상 테이블: 문서 내용에 대한 고속 전문 검색을 지원
             cur.execute("""

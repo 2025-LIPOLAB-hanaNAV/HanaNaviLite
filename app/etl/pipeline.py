@@ -48,7 +48,8 @@ class ETLPipeline:
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    def process_file(self, file_path: str, file_name: str) -> Dict[str, Any]:
+    def process_file(self, file_path: str, file_name: str, upload_token: Optional[str] = None,
+                     uploader_session_id: Optional[str] = None, uploader_user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         단일 파일을 처리하여 데이터베이스와 벡터 스토어에 저장
         """
@@ -93,11 +94,14 @@ class ETLPipeline:
                 cur.execute(
                     """
                     INSERT INTO documents
-                        (file_name, file_path, file_size, file_type, content_hash, title, status, created_at, updated_at)
+                        (file_name, file_path, file_size, file_type, content_hash, title, status, created_at, updated_at,
+                         uploader_session_id, uploader_user_id, upload_token)
                     VALUES
-                        (?,        ?,         ?,         ?,         ?,            ?,     'processing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        (?,        ?,         ?,         ?,         ?,            ?,     'processing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                         ?,                   ?,                 ?)
                     """,
-                    (file_name, file_path, file_size, file_ext, content_hash, None),
+                    (file_name, file_path, file_size, file_ext, content_hash, None,
+                     uploader_session_id, uploader_user_id, upload_token),
                 )
                 document_id = cur.lastrowid
                 logger.info(f"Inserted document '{file_name}' with ID: {document_id}")
@@ -131,6 +135,9 @@ class ETLPipeline:
                     "message": "No content to chunk",
                 }
 
+            # 3.5) 문서 키워드 추출
+            doc_keywords = ",".join(self.text_processor.extract_keywords(full_text, max_keywords=30))
+
             # 4) 임베딩 계산 및 청크 저장
             logger.info(f"Generating embeddings for {len(chunks)} chunks...")
             chunk_contents = [c["content"] for c in chunks]
@@ -161,16 +168,18 @@ class ETLPipeline:
                        SET content      = ?,
                            status       = 'processed',
                            processed_at = CURRENT_TIMESTAMP,
-                           updated_at   = CURRENT_TIMESTAMP
+                           updated_at   = CURRENT_TIMESTAMP,
+                           keywords     = ?,
+                           title        = COALESCE(title, ?)
                      WHERE id = ?
                     """,
-                    (full_text, document_id),
+                    (full_text, doc_keywords, os.path.splitext(file_name)[0], document_id),
                 )
                 # NOTE: documents_fts는 트리거가 자동 동기화하므로 수동 INSERT/UPDATE 불필요
 
             # 5) FAISS 인덱스에 벡터 추가
             logger.info(f"Adding {len(embeddings)} vectors to FAISS index...")
-            metadata = [{"document_id": document_id, "chunk_index": i} for i in range(len(chunks))]
+            metadata = [{"document_id": document_id, "chunk_index": i, "upload_token": upload_token} for i in range(len(chunks))]
             self.faiss_engine.add_vectors(chunk_ids, embeddings, metadata)
             self.faiss_engine.save_index()
 

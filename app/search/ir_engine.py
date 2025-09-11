@@ -293,6 +293,10 @@ class SQLiteFTS5Engine:
                 if 'date_to' in filters:
                     sql_query += " AND d.created_at <= ?"
                     params.append(filters['date_to'])
+                
+                if 'upload_token' in filters:
+                    sql_query += " AND d.upload_token = ?"
+                    params.append(filters['upload_token'])
             
             # 정렬 및 제한
             sql_query += " ORDER BY fts.rank LIMIT ?"

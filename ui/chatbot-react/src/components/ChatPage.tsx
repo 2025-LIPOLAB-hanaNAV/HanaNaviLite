@@ -284,6 +284,17 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Prepopulate chat via localStorage bridge from Documents tab
+  useEffect(() => {
+    const payload = localStorage.getItem('prepopulate_chat');
+    if (payload && payload.trim()) {
+      localStorage.removeItem('prepopulate_chat');
+      // send without files
+      handleSearch(payload);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const nextDestinations = [
     {
       id: '1',
