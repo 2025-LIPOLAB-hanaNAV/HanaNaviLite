@@ -103,15 +103,11 @@ def get_upload_dir() -> str:
 
 
 def ensure_writable_dir(path: str) -> str:
-    """디렉토리가 존재하고 쓰기 가능한지 보장. 불가 시 예외 발생."""
-    try:
-        os.makedirs(path, mode=0o775, exist_ok=True)
-        if not os.access(path, os.W_OK):
-            raise PermissionError(f"No write permission for: {path}")
-        return path
-    except Exception as e:
-        logger.error(f"Failed to ensure writable dir {path}: {e}")
-        raise
+    """디렉토리가 존재하고 쓰기 가능한지 보장. 불가 시 예외 발생 (로그는 상위에서 처리)."""
+    os.makedirs(path, mode=0o775, exist_ok=True)
+    if not os.access(path, os.W_OK):
+        raise PermissionError(f"No write permission for: {path}")
+    return path
 
 
 def get_writable_upload_dir() -> str:
@@ -134,8 +130,11 @@ def get_writable_upload_dir() -> str:
 
     for p in candidates:
         try:
-            return ensure_writable_dir(p)
-        except Exception:
-            continue
+            ensured = ensure_writable_dir(p)
+            if p != candidates[0]:
+                logger.info(f"Upload dir fallback used: {ensured}")
+            return ensured
+        except Exception as e:
+            logger.debug(f"Upload dir candidate skipped: {p} ({e})")
     # 전부 실패
     raise RuntimeError("No writable upload directory available")
