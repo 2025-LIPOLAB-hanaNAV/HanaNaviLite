@@ -434,6 +434,19 @@ class FAISSVectorEngine:
             
             logger.info(f"Cleaned up {items_to_remove} cache entries")
             gc.collect()
+
+    def clear_cache(self) -> None:
+        """공개 캐시 정리 API: 메타데이터 캐시 및 내부 캐시를 초기화합니다."""
+        # 메타데이터 캐시 전부 비우기
+        cleared = len(self.metadata_cache)
+        self.metadata_cache.clear()
+        # 매핑은 유지 (인덱스와 동기화)
+        logger.info(f"FAISS metadata cache cleared: {cleared} entries")
+        # 인덱스 파일 갱신 (선택적)
+        try:
+            self.save_index()
+        except Exception as e:
+            logger.warning(f"FAISS cache clear: save_index warning: {e}")
     
     @contextmanager
     def batch_mode(self):

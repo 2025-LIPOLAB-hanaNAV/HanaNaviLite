@@ -279,7 +279,7 @@ class DatabaseManager:
             AFTER DELETE ON documents
             BEGIN
                 INSERT INTO documents_fts(documents_fts, rowid, title, content, keywords)
-                VALUES ('delete', old.id, old.content, old.keywords);
+                VALUES ('delete', old.id, old.title, old.content, old.keywords);
             END;
         """)
 
