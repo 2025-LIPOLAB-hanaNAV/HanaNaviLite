@@ -31,7 +31,19 @@ type HybridResult = {
 };
 
 export function DocumentSearch() {
-  const API_BASE_URL = (import.meta as any)?.env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const resolveApiBase = () => {
+    const env = (import.meta as any)?.env?.VITE_API_BASE_URL;
+    if (env) return env;
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      if (window.location.pathname.startsWith('/ui') || origin.includes(':8020')) {
+        return origin;
+      }
+      return 'http://localhost:8020';
+    }
+    return 'http://localhost:8020';
+  };
+  const API_BASE_URL = resolveApiBase();
   const [onlyMine, setOnlyMine] = useState(true);
   const uploadToken = useMemo(() => {
     let t = localStorage.getItem('upload_token');

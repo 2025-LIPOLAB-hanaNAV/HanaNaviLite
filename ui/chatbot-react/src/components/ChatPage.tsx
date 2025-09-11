@@ -72,7 +72,21 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const API_BASE_URL = (import.meta as any)?.env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const resolveApiBase = () => {
+    const env = (import.meta as any)?.env?.VITE_API_BASE_URL;
+    if (env) return env;
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      // If UI is served by FastAPI (/ui) or backend port is used, stick to origin
+      if (window.location.pathname.startsWith('/ui') || origin.includes(':8020')) {
+        return origin;
+      }
+      // Dev fallback: backend on 8020
+      return 'http://localhost:8020';
+    }
+    return 'http://localhost:8020';
+  };
+  const API_BASE_URL = resolveApiBase();
   
   const chatModes: ChatMode[] = [
     { id: 'quick', name: '빠른답', description: '즉시 답변', icon: 'arrow-right' },
