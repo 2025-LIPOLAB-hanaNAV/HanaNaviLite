@@ -2,10 +2,9 @@
 
 FROM ollama/ollama:latest
 
-# List of models to bake into the image. Adjust as needed.
-# Build-arg can override, otherwise default to two models.
-ARG OLLAMA_MODELS="gemma3:12b-it-qat llama3.1:8b-instruct"
-ENV OLLAMA_MODELS=${OLLAMA_MODELS}
+# Fixed list of models baked into the image (locked for offline use)
+# Adjust only if you want to change the offline default set.
+ENV OLLAMA_MODELS="gemma3:12b-it-qat llama3.1:8b-instruct"
 
 # Pre-pull models during build by starting a temporary ollama serve
 RUN bash -lc 'set -euo pipefail; \

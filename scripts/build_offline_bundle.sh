@@ -12,7 +12,6 @@ BUNDLE_NAME="hananavilite_offline_bundle_${TS}.tar.gz"
 APP_IMAGE="hananavilite-app:offline"
 OLLAMA_IMAGE="hananavilite-ollama:offline"
 
-OLLAMA_MODELS_DEFAULT="gemma3:12b-it-qat llama3.1:8b-instruct"
 PREFETCH_EMBEDDING_DEFAULT=1
 
 echo "[+] Checking docker..."
@@ -26,9 +25,8 @@ docker build \
   -t "$APP_IMAGE" \
   -f "$ROOT_DIR/Dockerfile" "$ROOT_DIR"
 
-echo "[+] Building ollama image ($OLLAMA_IMAGE) with pre-pulled models: ${OLLAMA_MODELS:-$OLLAMA_MODELS_DEFAULT}"
+echo "[+] Building ollama image ($OLLAMA_IMAGE) with fixed baked models (see Dockerfile.ollama)"
 docker build \
-  --build-arg OLLAMA_MODELS="${OLLAMA_MODELS:-$OLLAMA_MODELS_DEFAULT}" \
   -t "$OLLAMA_IMAGE" \
   -f "$ROOT_DIR/Dockerfile.ollama" "$ROOT_DIR"
 
@@ -61,4 +59,3 @@ echo "[+] Creating bundle archive $BUNDLE_NAME"
 tar -C "$STAGE_DIR/.." -czf "$DIST_DIR/$BUNDLE_NAME" "$(basename "$STAGE_DIR")"
 
 echo "[+] Bundle ready: $DIST_DIR/$BUNDLE_NAME"
-
