@@ -3,8 +3,9 @@
 FROM ollama/ollama:latest
 
 # List of models to bake into the image. Adjust as needed.
-# Keep at minimum the primary and one backup to control image size.
-ENV OLLAMA_MODELS="gemma3:12b-it-qat llama3.1:8b-instruct"
+# Build-arg can override, otherwise default to two models.
+ARG OLLAMA_MODELS="gemma3:12b-it-qat llama3.1:8b-instruct"
+ENV OLLAMA_MODELS=${OLLAMA_MODELS}
 
 # Pre-pull models during build by starting a temporary ollama serve
 RUN bash -lc 'set -euo pipefail; \
@@ -26,4 +27,3 @@ RUN bash -lc 'set -euo pipefail; \
 # Default serve
 EXPOSE 11434
 CMD ["ollama", "serve"]
-

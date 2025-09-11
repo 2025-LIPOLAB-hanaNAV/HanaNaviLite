@@ -47,14 +47,8 @@ COPY --from=ui-builder /build/ui/dist /app/ui/chatbot-react/dist
 ARG PREFETCH_EMBEDDING=1
 ENV HF_HOME=/root/.cache/huggingface
 RUN if [ "$PREFETCH_EMBEDDING" = "1" ]; then \
-      python - <<'PY'
-from sentence_transformers import SentenceTransformer
-import os
-model = os.environ.get('EMBEDDING_MODEL','dragonkue/snowflake-arctic-embed-l-v2.0-ko')
-print('Prefetching embedding model:', model)
-SentenceTransformer(model)
-PY
-    ; fi
+      python -c "from sentence_transformers import SentenceTransformer; import os; m=os.environ.get('EMBEDDING_MODEL','dragonkue/snowflake-arctic-embed-l-v2.0-ko'); print('Prefetching embedding model:', m); SentenceTransformer(m)"; \
+    fi
 
 # Ensure runtime directories
 RUN mkdir -p /app/data /app/uploads /app/models /app/logs && \
@@ -65,4 +59,3 @@ ENV API_PORT=8020
 EXPOSE 8020
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8020"]
-
