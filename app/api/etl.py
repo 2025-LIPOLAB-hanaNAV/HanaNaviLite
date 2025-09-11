@@ -144,3 +144,239 @@ async def etl_status(
     except Exception as e:
         logger.error(f"Failed to fetch ETL status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="상태 조회 실패")
+
+
+@router.get("/etl/documents")
+async def list_documents(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    status_filter: str | None = Query(default=None, description="상태 필터: processed, failed, processing")
+):
+    """
+    등록된 문서 목록 조회
+    """
+    from app.core.database import get_db_manager
+    dbm = get_db_manager()
+    try:
+        with dbm.get_connection() as conn:
+            cur = conn.cursor()
+            
+            # 기본 쿼리
+            sql = """
+                SELECT id, file_name, file_type, file_size, status, created_at, updated_at, 
+                       processed_at, keywords, upload_token, LENGTH(content) as content_length
+                FROM documents
+            """
+            params: list = []
+            
+            # 상태 필터
+            if status_filter:
+                sql += " WHERE status = ?"
+                params.append(status_filter)
+            
+            # 정렬 및 페이징
+            sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            
+            # 총 개수 조회
+            count_sql = "SELECT COUNT(*) FROM documents"
+            count_params: list = []
+            if status_filter:
+                count_sql += " WHERE status = ?"
+                count_params.append(status_filter)
+            
+            cur.execute(count_sql, count_params)
+            total_count = cur.fetchone()[0]
+            
+            documents = []
+            for r in rows:
+                documents.append({
+                    "id": r[0],
+                    "file_name": r[1],
+                    "file_type": r[2],
+                    "file_size": r[3],
+                    "status": r[4],
+                    "created_at": r[5],
+                    "updated_at": r[6],
+                    "processed_at": r[7],
+                    "keywords": r[8],
+                    "upload_token": r[9],
+                    "content_length": r[10]
+                })
+            
+            return {
+                "documents": documents,
+                "total_count": total_count,
+                "limit": limit,
+                "offset": offset
+            }
+    except Exception as e:
+        logger.error(f"Failed to fetch documents: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="문서 목록 조회 실패")
+
+
+@router.get("/etl/documents/{document_id}")
+async def get_document_detail(document_id: int):
+    """
+    특정 문서의 상세 정보 조회
+    """
+    from app.core.database import get_db_manager
+    dbm = get_db_manager()
+    try:
+        with dbm.get_connection() as conn:
+            cur = conn.cursor()
+            
+            # 문서 정보 조회
+            cur.execute("""
+                SELECT id, file_name, file_type, file_size, status, created_at, updated_at,
+                       processed_at, keywords, upload_token, content, file_path
+                FROM documents WHERE id = ?
+            """, (document_id,))
+            doc_row = cur.fetchone()
+            
+            if not doc_row:
+                raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+            
+            # 청크 정보 조회
+            cur.execute("""
+                SELECT id, chunk_index, LENGTH(content) as chunk_length, created_at
+                FROM chunks WHERE document_id = ? ORDER BY chunk_index
+            """, (document_id,))
+            chunk_rows = cur.fetchall()
+            
+            chunks = []
+            for chunk in chunk_rows:
+                chunks.append({
+                    "id": chunk[0],
+                    "chunk_index": chunk[1],
+                    "chunk_length": chunk[2],
+                    "created_at": chunk[3]
+                })
+            
+            document = {
+                "id": doc_row[0],
+                "file_name": doc_row[1],
+                "file_type": doc_row[2],
+                "file_size": doc_row[3],
+                "status": doc_row[4],
+                "created_at": doc_row[5],
+                "updated_at": doc_row[6],
+                "processed_at": doc_row[7],
+                "keywords": doc_row[8],
+                "upload_token": doc_row[9],
+                "content_length": len(doc_row[10]) if doc_row[10] else 0,
+                "file_path": doc_row[11],
+                "chunks": chunks,
+                "chunk_count": len(chunks)
+            }
+            
+            return document
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="문서 조회 실패")
+
+
+@router.delete("/etl/documents/{document_id}")
+async def delete_document(document_id: int):
+    """
+    문서 삭제 (DB와 벡터 인덱스에서 제거)
+    """
+    from app.core.database import get_db_manager
+    from app.search.faiss_engine import get_faiss_engine
+    
+    dbm = get_db_manager()
+    faiss_engine = get_faiss_engine()
+    
+    try:
+        with dbm.get_connection() as conn:
+            cur = conn.cursor()
+            
+            # 문서 존재 확인
+            cur.execute("SELECT id, file_name FROM documents WHERE id = ?", (document_id,))
+            doc_row = cur.fetchone()
+            if not doc_row:
+                raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+            
+            # 청크 ID 목록 조회 (FAISS에서 제거용)
+            cur.execute("SELECT chunk_index FROM chunks WHERE document_id = ?", (document_id,))
+            chunk_indices = [f"{document_id}_{row[0]}" for row in cur.fetchall()]
+            
+            # 데이터베이스에서 삭제
+            cur.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
+            cur.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+            
+            # FAISS 인덱스에서 벡터 제거 (가능한 경우)
+            try:
+                if chunk_indices:
+                    faiss_engine.remove_vectors(chunk_indices)
+                    faiss_engine.save_index()
+            except Exception as e:
+                logger.warning(f"Failed to remove vectors from FAISS: {e}")
+            
+            return {
+                "message": f"Document '{doc_row[1]}' deleted successfully",
+                "document_id": document_id,
+                "chunks_removed": len(chunk_indices)
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="문서 삭제 실패")
+
+
+@router.post("/etl/documents/{document_id}/reprocess")
+async def reprocess_document(document_id: int, background_tasks: BackgroundTasks):
+    """
+    문서 재처리
+    """
+    from app.core.database import get_db_manager
+    dbm = get_db_manager()
+    
+    try:
+        with dbm.get_connection() as conn:
+            cur = conn.cursor()
+            
+            # 문서 정보 조회
+            cur.execute("""
+                SELECT id, file_name, file_path, upload_token, uploader_session_id, uploader_user_id
+                FROM documents WHERE id = ?
+            """, (document_id,))
+            doc_row = cur.fetchone()
+            
+            if not doc_row:
+                raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+            
+            # 파일 존재 확인
+            file_path = doc_row[2]
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=400, detail="원본 파일을 찾을 수 없습니다")
+            
+            # 기존 데이터 삭제
+            cur.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
+            cur.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+            
+            # 백그라운드에서 재처리
+            background_tasks.add_task(
+                run_etl_background, 
+                file_path, 
+                doc_row[1], 
+                doc_row[3],  # upload_token
+                doc_row[4],  # uploader_session_id  
+                doc_row[5]   # uploader_user_id
+            )
+            
+            return {
+                "message": f"Document '{doc_row[1]}' queued for reprocessing",
+                "document_id": document_id
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reprocess document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="문서 재처리 실패")

@@ -83,12 +83,42 @@ class RRFAlgorithm:
                 document_id = ir_result.document_id
                 metadata = ir_result.metadata
             else:
-                # Vector만 있는 경우
+                # Vector만 있는 경우 - 데이터베이스에서 콘텐츠 가져오기
                 title = ""
                 content = ""
                 snippet = ""
                 document_id = None
                 metadata = vector_result.metadata if vector_result else None
+                
+                # chunk_id에서 문서 정보 가져오기
+                if vector_result and chunk_id:
+                    try:
+                        from app.core.database import get_db_manager
+                        db_manager = get_db_manager()
+                        with db_manager.get_connection() as conn:
+                            cur = conn.cursor()
+                            # chunk_id가 "document_id_chunk_index" 형식이라고 가정
+                            parts = chunk_id.split('_')
+                            if len(parts) >= 2:
+                                try:
+                                    doc_id = int(parts[0])
+                                    chunk_index = int(parts[1])
+                                    cur.execute("""
+                                        SELECT c.content, d.title, d.file_name, d.id
+                                        FROM chunks c 
+                                        JOIN documents d ON c.document_id = d.id 
+                                        WHERE c.document_id = ? AND c.chunk_index = ?
+                                    """, (doc_id, chunk_index))
+                                    row = cur.fetchone()
+                                    if row:
+                                        content = row[0] or ""
+                                        title = row[1] or row[2] or ""  # title 또는 file_name
+                                        snippet = content[:200] + "..." if len(content) > 200 else content
+                                        document_id = row[3]
+                                except ValueError:
+                                    pass
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch content for chunk_id {chunk_id}: {e}")
             
             # 점수 추출
             vector_score = vector_result.score if vector_result else 0.0

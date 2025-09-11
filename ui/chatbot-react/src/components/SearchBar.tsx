@@ -223,7 +223,7 @@ export function SearchBar({
                     className="h-4 w-4 p-0 hover:bg-destructive/20"
                     onClick={() => removeFile(index)}
                   >
-                    <Icon name="help-circle" size={12} />
+                    <Icon name="x" size={12} />
                   </Button>
                 </Badge>
               );

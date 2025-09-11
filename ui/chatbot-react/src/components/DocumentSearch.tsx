@@ -36,7 +36,12 @@ export function DocumentSearch() {
     if (env) return env;
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
-      if (window.location.pathname.startsWith('/ui') || origin.includes(':8020')) {
+      // 3000번 또는 3001번 포트에서 실행 중이면 프록시를 통해 /api 호출
+      if (origin.includes(':3000') || origin.includes(':3001')) {
+        return origin;
+      }
+      // 8020번 포트에서 직접 실행 중이면 그대로 사용
+      if (origin.includes(':8020')) {
         return origin;
       }
       return 'http://localhost:8020';
@@ -285,19 +290,29 @@ export function DocumentSearch() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
-                          const sum = await summarize(r.snippet || r.content || '');
-                          if (sum) alert(sum);
+                        onClick={() => {
+                          const text = r.snippet || r.content || '';
+                          const fileName = r.metadata?.file_name || r.title || '문서';
+                          if (text) {
+                            const prompt = `다음 문서 내용을 간결하게 요약해주세요:\n\n[출처: ${fileName}]\n${text}`;
+                            localStorage.setItem('prepopulate_chat', prompt);
+                            window.location.hash = '#/chat';
+                          }
                         }}
                       >
-                        요약
+                        요약 요청
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
-                          const qs = await genQuestions(r.snippet || r.content || '');
-                          if (qs.length) alert(qs.map((q, i) => `${i + 1}. ${q}`).join('\n'));
+                        onClick={() => {
+                          const text = r.snippet || r.content || '';
+                          const fileName = r.metadata?.file_name || r.title || '문서';
+                          if (text) {
+                            const prompt = `다음 문서 내용을 바탕으로 이해도를 확인할 수 있는 질문 3개를 생성해주세요:\n\n[출처: ${fileName}]\n${text}`;
+                            localStorage.setItem('prepopulate_chat', prompt);
+                            window.location.hash = '#/chat';
+                          }
                         }}
                       >
                         질문 생성

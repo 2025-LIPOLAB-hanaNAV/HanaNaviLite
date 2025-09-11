@@ -28,6 +28,7 @@ from app.conversation.dialog_state import (
 from app.llm.ollama_client import get_ollama_client
 from app.llm.chat_mode_client import get_chat_mode_client
 from app.conversation.search_decision_agent import SearchDecisionAgent
+from app.api.chat_files import get_temp_file_content
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class SendMessageRequest(BaseModel):
     include_context: bool = Field(default=True)
     max_context_turns: int = Field(default=3, ge=1, le=5)
     chat_mode: str = Field(default="quick")  # quick, precise, summary
+    temp_file_ids: Optional[List[str]] = Field(default=None, description="임시 업로드된 파일 ID 목록")
 
 
 class SendMessageResponse(BaseModel):
@@ -70,6 +72,7 @@ class SendMessageResponse(BaseModel):
     user_message: str
     assistant_message: str
     search_context: Optional[Dict[str, Any]] = None
+    search_results: List[Dict[str, Any]] = []
     context_explanation: str = ""
     response_time_ms: int
     confidence_score: Optional[float] = None
@@ -231,6 +234,22 @@ async def send_message(session_id: str, request: SendMessageRequest):
         context_explanation = ""
         search_context_dict = None
         
+        # 업로드된 파일 컨텍스트 처리
+        file_context = ""
+        if request.temp_file_ids:
+            file_contents = []
+            for file_id in request.temp_file_ids:
+                content = get_temp_file_content(file_id)
+                if content:
+                    # 파일 내용을 요약해서 추가 (너무 길면 잘라냄)
+                    if len(content) > 3000:
+                        content = content[:3000] + "...[내용이 더 있습니다]"
+                    file_contents.append(f"[업로드된 파일 내용]\n{content}")
+            
+            if file_contents:
+                file_context = "\n\n".join(file_contents)
+                context_explanation += f"업로드된 파일 {len(request.temp_file_ids)}개의 내용을 참고했습니다. "
+        
         if request.include_context:
             try:
                 # 이전 대화 맥락 구성
@@ -269,8 +288,49 @@ async def send_message(session_id: str, request: SendMessageRequest):
                     context_explanation = f"일상 대화로 판단되어 검색을 생략했습니다. (신뢰도: {decision_result['confidence']:.2f})"
                 else:
                     context_explanation = f"정보 요청으로 판단하여 검색을 수행합니다. (신뢰도: {decision_result['confidence']:.2f})"
-                    # 실제 검색은 여기서 수행되어야 함
-                    # search_results = actual_search_engine.search(request.message)
+                    
+                    # 실제 RAG 검색 수행
+                    try:
+                        from app.search.hybrid_engine import get_hybrid_search_engine
+                        hybrid_engine = get_hybrid_search_engine()
+                        
+                        # 직접 HybridSearchEngine 사용 (async 문제 해결)
+                        rag_results = await hybrid_engine.search(
+                            query=request.message,
+                            top_k=5
+                        )
+                        
+                        if rag_results and len(rag_results) > 0:
+                            # HybridSearchResult 리스트를 dict 형태로 변환
+                            search_results = []
+                            for result in rag_results:
+                                search_results.append({
+                                    'content': result.content,
+                                    'document_name': result.document_name or 'Unknown',
+                                    'chunk_index': result.chunk_index,
+                                    'similarity': result.similarity_score,
+                                    'keywords': getattr(result, 'keywords', [])
+                                })
+                            
+                            search_context_dict["results_count"] = len(search_results)
+                            context_explanation += f" {len(search_results)}개의 관련 문서를 찾았습니다."
+                            
+                            # 검색 결과를 컨텍스트에 추가
+                            search_context_text = "\n\n[검색된 문서 내용]\n"
+                            for i, result in enumerate(search_results[:3]):  # 상위 3개만
+                                search_context_text += f"문서 {i+1}: {result['content'][:500]}\n\n"
+                            
+                            # 파일 컨텍스트에 검색 결과 추가
+                            if file_context:
+                                file_context += search_context_text
+                            else:
+                                file_context = search_context_text
+                        else:
+                            context_explanation += " 관련 문서를 찾지 못했습니다."
+                            
+                    except Exception as search_error:
+                        logger.error(f"RAG search failed: {search_error}")
+                        context_explanation += " 검색 중 오류가 발생했습니다."
 
                 logger.info(f"SearchDecisionAgent 결과 - 질문: '{request.message}', 분류: {decision_result['intent_type']}, 검색필요: {decision_result['requires_search']}, 신뢰도: {decision_result['confidence']:.2f}")
 
@@ -293,11 +353,21 @@ async def send_message(session_id: str, request: SendMessageRequest):
         try:
             chat_mode_client = get_chat_mode_client()
             
-            # ChatModeClient로 응답 생성 (맥락은 이미 위에서 구성됨)
+            # 전체 컨텍스트 구성 (파일 컨텍스트 + 대화 컨텍스트)
+            full_context = ""
+            if file_context:
+                full_context = file_context
+            if 'conversation_context' in locals() and conversation_context:
+                if full_context:
+                    full_context += "\n\n[이전 대화 내용]\n" + conversation_context
+                else:
+                    full_context = conversation_context
+            
+            # ChatModeClient로 응답 생성 (파일 컨텍스트 포함)
             assistant_message = await chat_mode_client.generate_response(
                 mode=request.chat_mode,
                 user_message=request.message,
-                conversation_context=conversation_context if 'conversation_context' in locals() and conversation_context else None,
+                conversation_context=full_context if full_context else None,
                 search_context=search_context_dict
             )
         except Exception as e:
@@ -333,6 +403,7 @@ async def send_message(session_id: str, request: SendMessageRequest):
             user_message=request.message,
             assistant_message=assistant_message,
             search_context=search_context_dict,
+            search_results=search_results,
             context_explanation=context_explanation,
             response_time_ms=response_time_ms,
             confidence_score=search_context_dict.get("confidence") if search_context_dict else None,

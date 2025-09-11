@@ -26,6 +26,13 @@ interface ChatMessage {
   intent?: string;
   requiresSearch?: boolean;
   summary?: string;
+  searchResults?: Array<{
+    content: string;
+    similarity?: number;
+    document_name?: string;
+    chunk_index?: number;
+    keywords?: string[];
+  }>;
 }
 
 interface EvidenceItem {
@@ -70,6 +77,7 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const resolveApiBase = () => {
@@ -146,11 +154,61 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       }
 
       const data = await response.json();
+      // 세션 ID를 localStorage에 저장
+      localStorage.setItem('chat_session_id', data.session_id);
       return data.session_id;
     } catch (error) {
       console.error('Failed to create session:', error);
       setSessionError('세션 생성에 실패했습니다.');
       return null;
+    }
+  };
+
+  const loadSessionHistory = async (sessionId: string): Promise<void> => {
+    try {
+      setIsLoadingHistory(true);
+      const response = await fetch(`${API_BASE_URL}/api/v1/conversation/sessions/${sessionId}/history`);
+      if (!response.ok) {
+        throw new Error('Failed to load session history');
+      }
+      
+      const data = await response.json();
+      const historyMessages: ChatMessage[] = [];
+      
+      data.turns?.forEach((turn: any, index: number) => {
+        // 사용자 메시지
+        historyMessages.push({
+          id: `user_${turn.turn_number || index}`,
+          type: 'user',
+          content: turn.user_message,
+          timestamp: new Date(turn.created_at || Date.now()).toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: 'success'
+        });
+        
+        // 어시스턴트 메시지
+        historyMessages.push({
+          id: `assistant_${turn.turn_number || index}`,
+          type: 'assistant',
+          content: turn.assistant_message,
+          timestamp: new Date(turn.created_at || Date.now()).toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: 'success',
+          evidenceCount: 0,
+          responseTime: (turn.response_time_ms || 0) / 1000,
+          confidence: turn.confidence_score
+        });
+      });
+      
+      setMessages(historyMessages);
+    } catch (error) {
+      console.error('Failed to load session history:', error);
+    } finally {
+      setIsLoadingHistory(false);
     }
   };
 
@@ -195,25 +253,89 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     setMessages(prev => [...prev, loadingMessage]);
 
     try {
+      // Process uploaded files first - upload to ETL pipeline for permanent storage
+      let uploadedFileNames: string[] = [];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Generate unique upload token for this chat session
+            const uploadToken = `chat_${sessionId || 'temp'}_${Date.now()}`;
+            
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/v1/etl/upload?upload_token=${uploadToken}&uploader_session_id=${sessionId || 'chat'}`, {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error(`Failed to upload file ${file.name}: ${uploadResponse.statusText}`);
+            }
+
+            const uploadData = await uploadResponse.json();
+            uploadedFileNames.push(uploadData.file_name);
+            
+            console.log(`File ${file.name} uploaded to ETL pipeline: ${uploadData.file_name}`);
+            
+            // Show user that file is being processed
+            const fileUploadMessage: ChatMessage = {
+              id: `file_${Date.now()}_${Math.random()}`,
+              type: 'system',
+              content: `📄 파일 "${file.name}"이 업로드되었습니다. 처리 중...`,
+              timestamp: new Date().toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              state: 'loading'
+            };
+            setMessages(prev => [...prev.slice(0, -1), fileUploadMessage, prev[prev.length - 1]]);
+            
+            // ETL 처리 상태 확인 (5초 후부터 시작)
+            setTimeout(() => {
+              checkETLStatus(uploadData.file_name, fileUploadMessage.id);
+            }, 3000);
+            
+          } catch (fileError) {
+            console.error(`Failed to upload file ${file.name}:`, fileError);
+            
+            // Show error message to user
+            const errorMessage: ChatMessage = {
+              id: `error_${Date.now()}_${Math.random()}`,
+              type: 'system', 
+              content: `❌ 파일 "${file.name}" 업로드에 실패했습니다: ${fileError instanceof Error ? fileError.message : '알 수 없는 오류'}`,
+              timestamp: new Date().toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              state: 'warning'
+            };
+            setMessages(prev => [...prev.slice(0, -1), errorMessage, prev[prev.length - 1]]);
+          }
+        }
+      }
+
       // Ensure session exists
       const currentSessionId = await ensureSession();
       if (!currentSessionId) {
         throw new Error('Failed to create session');
       }
 
-      // Send message to backend
+      // Send message to backend - files are now in ETL pipeline and will be found by RAG search
+      const requestBody = {
+        message: query,
+        search_engine_type: 'hybrid',
+        include_context: true,
+        max_context_turns: 3,
+        chat_mode: currentMode  // 현재 선택된 챗 모드 전송
+      };
+
       const response = await fetch(`${API_BASE_URL}/api/v1/conversation/sessions/${currentSessionId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: query,
-          search_engine_type: 'hybrid',
-          include_context: true,
-          max_context_turns: 3,
-          chat_mode: currentMode  // 현재 선택된 챗 모드 전송
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -231,15 +353,16 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
           minute: '2-digit' 
         }),
         state: 'success',
-        evidenceCount: data.search_context?.requires_search ? 1 : 0,
+        evidenceCount: data.search_results?.length || 0,
         responseTime: data.response_time_ms / 1000, // Convert to seconds
         hasPII: false,
-        isEvidenceLow: false,
+        isEvidenceLow: (data.search_results?.length || 0) === 0 && data.search_context?.requires_search,
         turnNumber: data.turn_number,
         confidence: data.confidence_score,
         intent: data.search_context?.intent,
         requiresSearch: data.search_context?.requires_search,
-        summary: data.assistant_message.substring(0, 200) + (data.assistant_message.length > 200 ? '...' : '') // 간단한 요약
+        summary: data.assistant_message.substring(0, 200) + (data.assistant_message.length > 200 ? '...' : ''), // 간단한 요약
+        searchResults: data.search_results || []
       };
 
       setMessages(prev => prev.slice(0, -1).concat(assistantMessage));
@@ -288,6 +411,51 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
     console.log('Feedback:', { messageId, isHelpful, reason });
   };
 
+  const checkETLStatus = async (fileName: string, messageId: string) => {
+    try {
+      // 문서 목록에서 해당 파일 찾기
+      const response = await fetch(`${API_BASE_URL}/api/v1/etl/documents?limit=100`);
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      const document = data.documents?.find((doc: any) => doc.file_name === fileName);
+      
+      if (document) {
+        let statusMessage = '';
+        let messageState: 'success' | 'warning' = 'success';
+        
+        if (document.status === 'processed') {
+          statusMessage = `✅ 파일 "${fileName}" 처리가 완료되었습니다. 이제 질문해보세요!`;
+        } else if (document.status === 'failed') {
+          statusMessage = `❌ 파일 "${fileName}" 처리에 실패했습니다.`;
+          messageState = 'warning';
+        } else {
+          // 아직 처리 중이면 3초 후 다시 확인
+          setTimeout(() => checkETLStatus(fileName, messageId), 3000);
+          return;
+        }
+        
+        // 메시지 업데이트
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, content: statusMessage, state: messageState }
+            : msg
+        ));
+      } else {
+        // 문서를 찾지 못하면 3초 후 다시 시도
+        setTimeout(() => checkETLStatus(fileName, messageId), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to check ETL status:', error);
+      // 오류 발생시 처리 완료로 간주
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, content: `📄 파일 "${fileName}"이 업로드되었습니다.`, state: 'success' }
+          : msg
+      ));
+    }
+  };
+
   const handleContextRollback = () => {
     if (messages.length >= 2) {
       setMessages(prev => prev.slice(0, -2));
@@ -297,6 +465,35 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Initialize session and load history on component mount
+  useEffect(() => {
+    const initializeSession = async () => {
+      try {
+        // 저장된 세션 ID 확인
+        const savedSessionId = localStorage.getItem('chat_session_id');
+        
+        if (savedSessionId) {
+          // 세션이 아직 유효한지 확인
+          const response = await fetch(`${API_BASE_URL}/api/v1/conversation/sessions/${savedSessionId}`);
+          if (response.ok) {
+            setSessionId(savedSessionId);
+            await loadSessionHistory(savedSessionId);
+            console.log('Session restored:', savedSessionId);
+          } else {
+            // 유효하지 않은 세션이면 제거
+            localStorage.removeItem('chat_session_id');
+            console.log('Invalid session removed');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize session:', error);
+        localStorage.removeItem('chat_session_id');
+      }
+    };
+
+    initializeSession();
+  }, []);
 
   // Prepopulate chat via localStorage bridge from Documents tab
   useEffect(() => {
@@ -499,7 +696,19 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-6">
-        {messages.length === 0 ? (
+        {isLoadingHistory ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Icon name="search" size={32} className="text-primary animate-spin" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-medium">채팅 기록을 불러오는 중...</h3>
+              <p className="text-muted-foreground">
+                잠시만 기다려 주세요.
+              </p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
               <Icon name="search" size={32} className="text-primary" />
@@ -542,8 +751,15 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
                     <AnswerCard
                       id={message.id}
                       summary={message.summary || message.content}  // summary가 있으면 사용, 없으면 전체 내용
-                      evidence={sampleEvidences}
-                      preview="육아휴직 정책에 대한 상세한 내용은 사내 인트라넷의 HR 정책 섹션에서 확인하실 수 있습니다. 추가적으로 각 지점별로 차이가 있을 수 있으니 인사팀 담당자와 상담하시기 바랍니다."
+                      evidence={(message.searchResults || []).map((result, idx) => ({
+                        id: `${message.id}_${idx}`,
+                        title: result.document_name || `문서 ${idx + 1}`,
+                        section: `섹션 ${result.chunk_index || idx + 1}`,
+                        confidence: Math.round((result.similarity || 0.85) * 100),
+                        type: 'official' as const,
+                        preview: result.content?.substring(0, 200) + (result.content && result.content.length > 200 ? '...' : '') || ''
+                      }))}
+                      preview="검색된 문서를 기반으로 답변을 제공했습니다. 더 자세한 내용은 근거 문서를 참조하세요."
                       nextDestinations={nextDestinations}
                       onEvidenceClick={onEvidenceClick}
                       className="mt-4"

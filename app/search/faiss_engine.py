@@ -142,7 +142,8 @@ class FAISSVectorEngine:
             
             # 인덱스 저장 (GPU 인덱스는 CPU로 변환 후 저장)
             index_to_save = self.index
-            if faiss.index_is_gpu(self.index):
+            # GPU 체크: hasattr로 함수 존재 여부 확인 후 실행
+            if hasattr(faiss, 'index_is_gpu') and faiss.index_is_gpu(self.index):
                 index_to_save = faiss.index_gpu_to_cpu(self.index)
             faiss.write_index(index_to_save, f"{self.index_path}.faiss")
             
@@ -459,6 +460,79 @@ class FAISSVectorEngine:
             gc.collect()
             self._check_memory_usage()
             logger.info("Exiting batch mode")
+    
+    def remove_vectors(self, chunk_ids: List[str]) -> bool:
+        """
+        벡터 제거 (FAISS에서 특정 벡터를 직접 제거하는 것은 복잡하므로 인덱스 재구축)
+        """
+        try:
+            if not self.is_loaded:
+                self.load_index()
+            
+            if self.index is None or len(chunk_ids) == 0:
+                return True
+            
+            # 제거할 chunk_id들의 faiss_id 찾기
+            faiss_ids_to_remove = set()
+            for chunk_id in chunk_ids:
+                if chunk_id in self.reverse_mapping:
+                    faiss_ids_to_remove.add(self.reverse_mapping[chunk_id])
+            
+            if not faiss_ids_to_remove:
+                logger.info("No vectors found to remove")
+                return True
+            
+            # 남길 벡터들과 매핑 정보 수집
+            remaining_vectors = []
+            remaining_chunk_ids = []
+            remaining_metadata = []
+            
+            for faiss_id, chunk_id in self.id_mapping.items():
+                if faiss_id not in faiss_ids_to_remove:
+                    # 벡터 추출
+                    try:
+                        vector = self.index.reconstruct(faiss_id)
+                        remaining_vectors.append(vector)
+                        remaining_chunk_ids.append(chunk_id)
+                        remaining_metadata.append(self.metadata_cache.get(chunk_id, {}))
+                    except Exception as e:
+                        logger.warning(f"Failed to reconstruct vector {faiss_id}: {e}")
+            
+            if not remaining_vectors:
+                # 모든 벡터가 제거되면 빈 인덱스 생성
+                self._create_empty_index()
+                self.id_mapping.clear()
+                self.reverse_mapping.clear()
+                self.metadata_cache.clear()
+                logger.info(f"Removed {len(chunk_ids)} vectors, index is now empty")
+                return True
+            
+            # 새 인덱스 생성 및 남은 벡터들 추가
+            old_index = self.index
+            self._create_empty_index()
+            
+            # 벡터 배열 생성
+            vectors_array = np.array(remaining_vectors, dtype=np.float32)
+            faiss.normalize_L2(vectors_array)
+            
+            # 인덱스에 추가
+            self.index.add(vectors_array)
+            
+            # 매핑 정보 재구성
+            self.id_mapping = {i: chunk_id for i, chunk_id in enumerate(remaining_chunk_ids)}
+            self.reverse_mapping = {chunk_id: i for i, chunk_id in enumerate(remaining_chunk_ids)}
+            self.metadata_cache = {chunk_id: meta for chunk_id, meta in zip(remaining_chunk_ids, remaining_metadata)}
+            
+            # 메모리 정리
+            del old_index
+            gc.collect()
+            
+            logger.info(f"Removed {len(chunk_ids)} vectors, {len(remaining_vectors)} vectors remaining")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to remove vectors: {e}")
+            return False
     
     def close(self):
         """리소스 정리"""
