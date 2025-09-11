@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import get_db_manager
+from app.core.config import get_writable_upload_dir
 from app.api.health import router as health_router
 from app.api.search import router as search_router
 from app.api.etl import router as etl_router
@@ -59,6 +60,14 @@ async def lifespan(app: FastAPI):
         logger.info("Embedding manager initialized. Model will be loaded on first use.")
     except Exception as e:
         logger.error(f"Failed to initialize embedding manager: {e}", exc_info=True)
+
+    # 업로드 디렉토리 준비 (권한/존재 보장)
+    try:
+        upath = get_writable_upload_dir()
+        logger.info(f"Upload directory ready: {upath}")
+    except Exception as e:
+        logger.error(f"Upload directory initialization failed: {e}")
+        raise
     
     logger.info(f"Database initialized: {health_status}")
     logger.info(f"Application started on {settings.api_host}:{settings.api_port}")

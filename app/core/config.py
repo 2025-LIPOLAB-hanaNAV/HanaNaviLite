@@ -100,3 +100,42 @@ def get_upload_dir() -> str:
     if not os.path.isabs(settings.upload_dir):
         return os.path.join(os.getcwd(), settings.upload_dir)
     return settings.upload_dir
+
+
+def ensure_writable_dir(path: str) -> str:
+    """디렉토리가 존재하고 쓰기 가능한지 보장. 불가 시 예외 발생."""
+    try:
+        os.makedirs(path, mode=0o775, exist_ok=True)
+        if not os.access(path, os.W_OK):
+            raise PermissionError(f"No write permission for: {path}")
+        return path
+    except Exception as e:
+        logger.error(f"Failed to ensure writable dir {path}: {e}")
+        raise
+
+
+def get_writable_upload_dir() -> str:
+    """
+    업로드용으로 쓰기 가능한 디렉토리를 반환.
+    우선순위: 설정값 -> ./data/uploads -> ./uploads -> /tmp/hananavi_uploads
+    """
+    candidates = []
+    # 설정값 우선
+    try:
+        candidates.append(get_upload_dir())
+    except Exception:
+        pass
+    # 대체 경로들
+    candidates.extend([
+        os.path.join(os.getcwd(), 'data', 'uploads'),
+        os.path.join(os.getcwd(), 'uploads'),
+        '/tmp/hananavi_uploads',
+    ])
+
+    for p in candidates:
+        try:
+            return ensure_writable_dir(p)
+        except Exception:
+            continue
+    # 전부 실패
+    raise RuntimeError("No writable upload directory available")

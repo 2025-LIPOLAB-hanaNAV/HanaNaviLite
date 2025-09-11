@@ -72,7 +72,7 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const API_BASE_URL = 'http://localhost:8020';
+  const API_BASE_URL = (import.meta as any)?.env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   
   const chatModes: ChatMode[] = [
     { id: 'quick', name: '빠른답', description: '즉시 답변', icon: 'arrow-right' },

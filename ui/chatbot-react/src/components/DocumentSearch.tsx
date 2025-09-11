@@ -31,7 +31,7 @@ type HybridResult = {
 };
 
 export function DocumentSearch() {
-  const API_BASE_URL = 'http://localhost:8020';
+  const API_BASE_URL = (import.meta as any)?.env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   const [onlyMine, setOnlyMine] = useState(true);
   const uploadToken = useMemo(() => {
     let t = localStorage.getItem('upload_token');

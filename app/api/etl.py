@@ -3,7 +3,7 @@ import os
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request, Query
 
-from app.core.config import get_upload_dir
+from app.core.config import get_upload_dir, get_writable_upload_dir, get_settings
 from app.etl.pipeline import get_etl_pipeline, ETLPipeline
 
 logger = logging.getLogger(__name__)
@@ -35,17 +35,55 @@ async def upload_and_process_file(
     """
     파일을 업로드하고 백그라운드에서 ETL 처리를 시작합니다.
     """
-    upload_dir = get_upload_dir()
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+    # 안정성: 쓰기 가능한 업로드 디렉토리 확보 (여러 후보 시도)
+    upload_dir = get_writable_upload_dir()
 
-    file_path = os.path.join(upload_dir, file.filename)
+    # 파일명 정규화 (경로 분리자 제거, 과도한 공백/특수문자 치환)
+    import re, uuid
+    original_name = os.path.basename(file.filename or 'uploaded')
+    # 유지: 확장자
+    base, ext = os.path.splitext(original_name)
+    safe_base = re.sub(r"[^\w.-]+", "_", base).strip("._") or "file"
+    safe_ext = re.sub(r"[^A-Za-z0-9.]+", "", ext)[:10]
+    candidate = f"{safe_base}{safe_ext}"
+    file_path = os.path.join(upload_dir, candidate)
+    # 충돌 시 유니크 보장
+    if os.path.exists(file_path):
+        candidate = f"{safe_base}_{uuid.uuid4().hex[:8]}{safe_ext}"
+        file_path = os.path.join(upload_dir, candidate)
 
     try:
-        # 파일 저장
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        logger.info(f"File '{file.filename}' uploaded to '{file_path}'")
+        # 파일 저장 (사이즈 제한 및 퍼미션 오류 폴백)
+        settings = get_settings()
+        max_bytes = int(settings.max_file_size_mb * 1024 * 1024)
+        written = 0
+        try:
+            with open(file_path, "wb") as buffer:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if written > max_bytes:
+                        raise HTTPException(status_code=413, detail="파일이 최대 크기를 초과했습니다.")
+                    buffer.write(chunk)
+        except PermissionError:
+            # 권한 문제 폴백: /tmp 경로로 재시도
+            fallback_dir = "/tmp/hananavi_uploads"
+            os.makedirs(fallback_dir, exist_ok=True)
+            file_path = os.path.join(fallback_dir, candidate)
+            with open(file_path, "wb") as buffer:
+                await file.seek(0)
+                written = 0
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if written > max_bytes:
+                        raise HTTPException(status_code=413, detail="파일이 최대 크기를 초과했습니다.")
+                    buffer.write(chunk)
+        logger.info(f"File '{original_name}' uploaded to '{file_path}' ({written} bytes)")
 
         # 업로드 토큰: 쿼리, 헤더 중 택1
         token = upload_token or request.headers.get('X-Upload-Token')
@@ -55,7 +93,7 @@ async def upload_and_process_file(
 
         return {
             "message": "File uploaded successfully. Processing started in the background.",
-            "file_name": file.filename,
+            "file_name": candidate,
             "file_path": file_path,
             "upload_token": token
         }
