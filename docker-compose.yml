@@ -1,13 +1,44 @@
 
 services:
-  # HanaNaviLite 메인 애플리케이션
-  hananavilite:
+  # Ollama + Gemma3 서비스
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    container_name: ollama-with-gemma3
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+      - NVIDIA_VISIBLE_DEVICES=all
+    networks:
+      - lipolab-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # HanaNaviLite RAG 백엔드 서비스
+  rag-backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hananavilite-app
+    container_name: hananavilite-rag-backend
     ports:
-      - "8020:8020"
+      - "3030:3030"
     volumes:
       - ./data:/app/data
       - ./models:/app/models
@@ -15,21 +46,19 @@ services:
       - ./logs:/app/logs
       - huggingface_cache:/root/.cache/huggingface
     environment:
-      - OLLAMA_BASE_URL=http://host-gateway:11434  # 로컬 Ollama 사용 (권장) - 현재 11435 포트
-      # - OLLAMA_BASE_URL=http://ollama:11434  # Ollama 컨테이너 사용시 (docker-compose --profile ollama-container up -d)
+      - OLLAMA_BASE_URL=http://ollama:11434
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
       - LLM_MODEL=gemma3:12b-it-qat
       - DATABASE_URL=sqlite:///data/hananavilite.db
       - LOG_LEVEL=INFO
       - NVIDIA_VISIBLE_DEVICES=all
-      - API_PORT=8020
-    extra_hosts:
-      - "host-gateway:host-gateway"
+      - API_PORT=3030
     depends_on:
-      - redis
+      ollama:
+        condition: service_healthy
     restart: unless-stopped
     networks:
-      - hananavilite-network
+      - lipolab-network
     deploy:
       resources:
         reservations:
@@ -38,50 +67,85 @@ services:
               count: all
               capabilities: [gpu]
 
-  # Redis 캐시 서버 (선택적)
-  redis:
-    image: redis:7-alpine
-    container_name: hananavilite-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - hananavilite-network
-
-  # Ollama 서버 (선택적 - 로컬 Ollama 대신 사용 가능)
-  # 사용법: docker-compose --profile ollama-container up -d
-  # 주의: 현재는 로컬 Ollama(11435)를 사용하므로 이 컨테이너는 기본적으로 실행되지 않음
-  ollama:
+  # UI 챗봇 프론트엔드 서비스
+  ui-chatbot-frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.ollama
-    container_name: hananavilite-ollama
+      context: ./ui/chatbot-react
+      dockerfile: Dockerfile
+    container_name: hananavilite-ui-frontend
     ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
+      - "8080:80"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    restart: unless-stopped
+      - REACT_APP_API_BASE_URL=http://rag-backend:3030
+    depends_on:
+      - rag-backend
     networks:
-      - hananavilite-network
-    profiles:
-      - ollama-container  # 이 프로파일로 선택적 실행
+      - lipolab-network
+    restart: unless-stopped
+
+  # PII-GUARD 서비스 (기존)
+  pii-guard:
+    build:
+      context: ./PII-GUARD
+      dockerfile: Dockerfile
+    container_name: lipolab-pii-guard
+    ports:
+      - "3000:3000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma3:12b-it-qat
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - lipolab-network
+    restart: unless-stopped
+    volumes:
+      - ./pii-guard/data:/app/data
+
+  # 기존 백엔드 서비스
+  backend:
+    build:
+      context: ./web-portal-backend
+      dockerfile: Dockerfile
+    container_name: lipolab-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./web-portal-backend/data:/app/data
+    environment:
+      - PORT=3001
+      - PII_GUARD_URL=http://pii-guard:3000
+      - OLLAMA_URL=http://ollama:11434
+      - RAG_BACKEND_URL=http://rag-backend:3030
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3001"]
+    depends_on:
+      - pii-guard
+      - rag-backend
+    networks:
+      - lipolab-network
+    restart: unless-stopped
+
+  # 기존 프론트엔드 서비스
+  frontend:
+    build:
+      context: ./web-portal-mockup
+      dockerfile: Dockerfile
+    container_name: lipolab-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - lipolab-network
+    restart: unless-stopped
 
 volumes:
-  redis_data:
   ollama_data:
+    driver: local
   huggingface_cache:
+    driver: local
 
 networks:
-  hananavilite-network:
+  lipolab-network:
     driver: bridge

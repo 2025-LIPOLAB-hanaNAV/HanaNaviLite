@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     
     # FastAPI API 설정
     api_host: str = "0.0.0.0" # API 서버가 바인딩될 호스트 주소
-    api_port: int = 8020 # API 서버가 사용할 포트 번호
+    api_port: int = int(os.getenv("API_PORT", "3030")) # API 서버가 사용할 포트 번호
     api_title: str = "HanaNaviLite API" # API 문서에 표시될 제목
     api_version: str = "1.0.0" # API 버전
     
