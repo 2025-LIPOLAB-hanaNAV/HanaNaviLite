@@ -226,7 +226,7 @@ export function AdminConsole() {
       <div className="flex-1 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
           <div className="px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-4 bg-cyan-100">
+            <TabsList className="grid w-full grid-cols-4 bg-color-gary-100">
               <TabsTrigger value="overview">개요</TabsTrigger>
               <TabsTrigger value="knowledge">지식베이스</TabsTrigger>
               <TabsTrigger value="quality">품질 리그</TabsTrigger>
