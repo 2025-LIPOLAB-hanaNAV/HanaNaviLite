@@ -232,9 +232,9 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       id: Date.now().toString(),
       type: 'user',
       content: query,
-      timestamp: new Date().toLocaleTimeString('ko-KR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      timestamp: new Date().toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit'
       })
     };
 
@@ -249,8 +249,67 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       timestamp: '',
       state: 'loading'
     };
-    
+
     setMessages(prev => [...prev, loadingMessage]);
+
+    try {
+      // 1. PII Guard 검사 먼저 수행
+      const piiGuardResponse = await fetch('http://localhost:3000/guard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: query
+        })
+      });
+      console.log("PII 검사 수행 완료")
+
+      if (!piiGuardResponse.ok) {
+        throw new Error(`PII Guard 검사 실패: ${piiGuardResponse.statusText}`);
+      }
+
+      const piiGuardData = await piiGuardResponse.json();
+
+      // 2. PII가 탐지되거나 차단된 경우 처리
+      if (piiGuardData.blocked) {
+        const blockedMessage: ChatMessage = {
+          id: (Date.now() + 2).toString(),
+          type: 'assistant',
+          content: `죄송합니다. 입력하신 내용에서 개인정보가 탐지되어 처리할 수 없습니다.\n\n탐지된 정보:\n${piiGuardData.matches.map((match: any) => `- ${match.type}: ${match.value}`).join('\n')}\n\n개인정보를 제거하고 다시 질문해 주세요.`,
+          timestamp: new Date().toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: 'pii-detected',
+          evidenceCount: 0,
+          responseTime: 0,
+          hasPII: true,
+          isEvidenceLow: false
+        };
+
+        setMessages(prev => prev.slice(0, -1).concat(blockedMessage));
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. PII Guard 통과 시 처리된 텍스트 사용 (개인정보가 마스킹된 상태)
+      const processedQuery = piiGuardData.answer || query;
+
+      // PII 탐지되었지만 차단되지 않은 경우 경고 메시지 표시
+      if (piiGuardData.matches && piiGuardData.matches.length > 0) {
+        const warningMessage: ChatMessage = {
+          id: `warning_${Date.now()}`,
+          type: 'system',
+          content: `⚠️ 개인정보가 탐지되어 마스킹 처리되었습니다: ${piiGuardData.matches.map((match: any) => match.type).join(', ')}`,
+          timestamp: new Date().toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: 'warning'
+        };
+        setMessages(prev => [...prev.slice(0, -1), warningMessage, prev[prev.length - 1]]);
+      }
 
     try {
       // Process uploaded files first - upload to ETL pipeline for permanent storage
@@ -322,8 +381,9 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       }
 
       // Send message to backend - files are now in ETL pipeline and will be found by RAG search
+      // PII Guard를 통과한 처리된 쿼리 사용
       const requestBody = {
-        message: query,
+        message: processedQuery,
         search_engine_type: 'hybrid',
         include_context: true,
         max_context_turns: 3,
@@ -371,15 +431,22 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       
     } catch (error) {
       console.error('Failed to send message:', error);
-      
+
+      let errorContent = '죄송합니다. 현재 시스템에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+
+      // PII Guard 관련 오류인지 확인
+      if (error instanceof Error && error.message.includes('PII Guard')) {
+        errorContent = '개인정보 보호 시스템에 연결할 수 없습니다. 시스템 관리자에게 문의해 주세요.';
+      }
+
       // Fallback response
       const errorMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         type: 'assistant',
-        content: '죄송합니다. 현재 시스템에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-        timestamp: new Date().toLocaleTimeString('ko-KR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        content: errorContent,
+        timestamp: new Date().toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
         }),
         state: 'warning',
         evidenceCount: 0,
@@ -391,6 +458,29 @@ export function ChatPage({ onEvidenceClick }: ChatPageProps) {
       setMessages(prev => prev.slice(0, -1).concat(errorMessage));
       setIsLoading(false);
       setSessionError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+    }
+    } catch (error) {
+      console.error('Failed to process PII Guard response:', error);
+
+      // PII Guard 실패 시에도 에러 메시지 표시
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 2).toString(),
+        type: 'assistant',
+        content: '개인정보 보호 시스템에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        timestamp: new Date().toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        state: 'warning',
+        evidenceCount: 0,
+        responseTime: 0,
+        hasPII: false,
+        isEvidenceLow: true
+      };
+
+      setMessages(prev => prev.slice(0, -1).concat(errorMessage));
+      setIsLoading(false);
+      setSessionError('PII Guard 시스템 오류');
     }
   };
 
