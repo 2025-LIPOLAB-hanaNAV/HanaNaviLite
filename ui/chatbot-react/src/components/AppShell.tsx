@@ -36,7 +36,7 @@ export function AppShell({
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header - Enhanced */}
-      <header className="flex items-center justify-between px-6 py-4 border-b bg-elevated/95 backdrop-blur-lg shadow-lg">
+      <header className="flex items-center justify-between px-4 md:px-8 py-4 md:py-6 border-b bg-elevated/95 backdrop-blur-lg shadow-lg">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -57,11 +57,11 @@ export function AppShell({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="relative">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" className="relative cursor-pointer transition-all duration-200 hover:scale-105">
             <Icon name="info" size={16} />
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs"
             >
               3
@@ -71,6 +71,7 @@ export function AppShell({
             variant="ghost"
             size="sm"
             onClick={onThemeToggle}
+            className="cursor-pointer transition-all duration-200 hover:scale-105"
           >
             {isDark ? <Icon name="star" size={16} /> : <Icon name="star" size={16} />}
           </Button>
@@ -81,18 +82,18 @@ export function AppShell({
         {/* Left Navigation */}
         <nav className={cn(
           "border-r bg-elevated transition-all duration-300",
-          isSidebarCollapsed ? "w-16" : "w-52",
+          isSidebarCollapsed ? "w-16" : "w-64",
           "hidden md:flex md:flex-col"
         )}>
-          <div className="p-4 space-y-2">
+          <div className="p-6 space-y-3">
             {navigationItems.map((item) => {
               return (
                 <Button
                   key={item.id}
                   variant={currentView === item.id ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start",
-                    isSidebarCollapsed && "px-2"
+                    "w-full justify-start cursor-pointer h-12 px-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md",
+                    isSidebarCollapsed && "px-2 justify-center"
                   )}
                   onClick={() => onViewChange(item.id)}
                 >
@@ -110,7 +111,7 @@ export function AppShell({
         {!isSidebarCollapsed && (
           <div className="fixed inset-0 z-50 md:hidden bg-background/80 backdrop-blur-sm">
             <nav className="w-64 h-full bg-elevated border-r">
-              <div className="p-4 space-y-2">
+              <div className="p-6 space-y-3">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -125,7 +126,7 @@ export function AppShell({
                     <Button
                       key={item.id}
                       variant={currentView === item.id ? "default" : "ghost"}
-                      className="w-full justify-start"
+                      className="w-full justify-start cursor-pointer h-12 px-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
                       onClick={() => {
                         onViewChange(item.id);
                         setIsSidebarCollapsed(true);
@@ -144,7 +145,7 @@ export function AppShell({
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
           <main className={cn(
-            "flex-1 overflow-auto",
+            "flex-1 overflow-auto p-4 md:p-6",
             showRightPanel && "mr-80 hidden lg:block"
           )}>
             {children}

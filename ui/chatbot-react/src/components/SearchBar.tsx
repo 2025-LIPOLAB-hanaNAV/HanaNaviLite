@@ -23,7 +23,7 @@ interface AttachedFile {
 export function SearchBar({ 
   onSearch, 
   onVoiceToggle,
-  placeholder = "어디로 가시나요? (예: 육아휴직 급여 기준)",
+  placeholder = "무엇이든 물어보세요.",
   isVoiceActive = false,
   isLoading = false,
   className,
@@ -106,18 +106,18 @@ export function SearchBar({
     const el = textAreaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(200, Math.max(48, el.scrollHeight))}px`;
+    el.style.height = el.scrollHeight + 'px';
   }, [query]);
 
   return (
-    <div className={cn("w-full max-w-4xl", className)}>
+    <div className={cn("w-full min-w-[650px] max-w-4xl", className)}>
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
-        <div 
+        <div
           ref={dropZoneRef}
           className={cn(
-            "relative rounded-2xl border-2 transition-all duration-200",
-            isDragOver 
-              ? "border-primary bg-primary/5" 
+            "relative rounded-none border-2 transition-all duration-200",
+            isDragOver
+              ? "border-primary bg-primary/5"
               : variant === 'focused'
               ? "border-primary shadow-md"
               : "border-border bg-elevated",
@@ -128,7 +128,7 @@ export function SearchBar({
           onDrop={handleDrop}
         >
           {isDragOver && (
-            <div className="absolute inset-0 bg-primary/10 rounded-2xl flex items-center justify-center z-10">
+            <div className="absolute inset-0 bg-primary/10 rounded-none flex items-center justify-center z-10">
               <div className="text-center">
                 <Icon name="upload" size={32} className="text-primary mx-auto mb-2" />
                 <p className="text-primary font-medium">파일을 여기에 놓으세요</p>
@@ -136,7 +136,7 @@ export function SearchBar({
             </div>
           )}
           
-          <div className="flex items-center p-6 gap-4">
+          <div className="flex items-center p-4 gap-4">
             <Icon name="search" size={24} className="text-muted-foreground flex-shrink-0" />
             
             <Textarea
@@ -153,45 +153,13 @@ export function SearchBar({
               onCompositionEnd={() => setIsComposing(false)}
               rows={1}
               placeholder={placeholder}
-              className="border-0 bg-transparent text-xl px-0 shadow-none focus-visible:ring-0 font-normal placeholder:text-muted-foreground/60 placeholder:font-normal py-2 leading-6 min-h-12"
+              className="border-0 bg-transparent text-xl px-0 shadow-none focus-visible:ring-0 font-normal placeholder:text-muted-foreground/60 placeholder:font-normal py-1 leading-6 min-h-[36px] resize-none overflow-hidden"
               disabled={isLoading}
             />
             
             <div className="flex items-center gap-3 flex-shrink-0">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-muted-foreground hover:text-foreground p-3"
-              >
-                <Icon name="file-text" size={20} />
-              </Button>
-              
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onVoiceToggle?.(!isVoiceActive)}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground p-3",
-                  isVoiceActive && "text-primary bg-primary/10"
-                )}
-              >
-                {isVoiceActive ? <Icon name="mic" size={20} /> : <Icon name="mic-off" size={20} />}
-              </Button>
-              
-              <Button 
-                type="submit" 
+                type="submit"
                 size="lg"
                 disabled={(!query.trim() && attachedFiles.length === 0) || isLoading}
                 className="button-primary text-white font-bold px-10 py-4 border-0 ml-2"
