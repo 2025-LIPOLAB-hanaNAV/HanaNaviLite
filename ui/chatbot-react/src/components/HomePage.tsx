@@ -117,10 +117,10 @@ export function HomePage({ onSearch, onQuestionClick, onPresetClick }: HomePageP
   return (
     <div className="min-h-full bg-background">
       {/* Hero Section - Figma Inspired */}
-      <div className="relative overflow-hidden min-h-[500px] flex items-center justify-center">
+      <div className="relative overflow-hidden min-h-[500px] min-w-[660px] flex items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5" />
-        <div className="relative px-6 py-16 lg:py-24">
-          <div className="max-w-5xl mx-auto text-center space-y-8">
+        <div className="relative min-w-[660px] px-6 py-16 lg:py-24 ">
+          <div className="max-w-xl mx-auto text-center space-y-8">
             <div className="space-y-6">
               <div className="space-y-2">
 
@@ -138,7 +138,7 @@ export function HomePage({ onSearch, onQuestionClick, onPresetClick }: HomePageP
             <div className="mt-12">
               <SearchBar
                 onSearch={onSearch}
-                placeholder="어디로 떠나시겠어요? (예: 육아휴직 급여 기준)"
+                placeholder="보이스피싱 처리방법을 알려주세요."
                 className="max-w-2xl mx-auto"
               />
             </div>
